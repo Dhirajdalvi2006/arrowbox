@@ -1,4 +1,4 @@
-package com.example.locate
+package com.arrowbox.game
 
 import io.flutter.embedding.android.FlutterActivity
 

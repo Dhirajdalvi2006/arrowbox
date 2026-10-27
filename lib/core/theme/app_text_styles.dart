@@ -3,27 +3,29 @@ import 'app_colors.dart';
 
 class AppTextStyles {
   static const mainHeading = TextStyle(
-    fontSize: 28,
-    fontWeight: FontWeight.w700,
+    fontSize: 30,
+    fontWeight: FontWeight.w800,
     color: AppColors.textPrimary,
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
   );
 
   static const screenTitle = TextStyle(
-    fontSize: 22,
-    fontWeight: FontWeight.w600,
+    fontSize: 24,
+    fontWeight: FontWeight.w800,
     color: AppColors.textPrimary,
+    letterSpacing: -0.3,
   );
 
   static const sectionHeading = TextStyle(
-    fontSize: 17,
-    fontWeight: FontWeight.w600,
+    fontSize: 18,
+    fontWeight: FontWeight.w800,
     color: AppColors.textPrimary,
+    letterSpacing: -0.2,
   );
 
   static const gameTitle = TextStyle(
     fontSize: 13,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
   );
 
@@ -36,18 +38,18 @@ class AppTextStyles {
 
   static const label = TextStyle(
     fontSize: 12,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w600,
     color: AppColors.textSecondary,
   );
 
   static const buttonLabel = TextStyle(
     fontSize: 15,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
     color: Colors.white,
   );
 
   static const chipLabel = TextStyle(
     fontSize: 13,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w600,
   );
 }

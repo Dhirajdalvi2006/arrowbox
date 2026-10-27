@@ -5,50 +5,81 @@ class AppTheme {
   static ThemeData get light => ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
-        scaffoldBackgroundColor: AppColors.background,
+        scaffoldBackgroundColor: AppColors.lightBackground,
+        dividerColor: AppColors.lightBorder,
         colorScheme: const ColorScheme.light(
           primary: AppColors.primary,
           onPrimary: Colors.white,
-          surface: AppColors.cardWhite,
-          onSurface: AppColors.textPrimary,
+          surface: AppColors.lightCardWhite,
+          surfaceContainerHighest: AppColors.lightSurfaceSecondary,
+          onSurface: AppColors.lightTextPrimary,
+          onSurfaceVariant: AppColors.lightTextSecondary,
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: AppColors.background,
+          backgroundColor: AppColors.lightBackground,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
-          iconTheme: IconThemeData(color: AppColors.textPrimary),
+          centerTitle: true,
+          iconTheme: IconThemeData(color: AppColors.lightTextPrimary),
           titleTextStyle: TextStyle(
-            color: AppColors.textPrimary,
+            color: AppColors.lightTextPrimary,
             fontSize: 18,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
           ),
         ),
         cardTheme: CardThemeData(
-          color: AppColors.cardWhite,
+          color: AppColors.lightCardWhite,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-            side: const BorderSide(color: AppColors.border),
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: AppColors.lightBorder),
           ),
         ),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: AppColors.cardWhite,
-          selectedItemColor: AppColors.primary,
-          unselectedItemColor: AppColors.textSecondary,
-          type: BottomNavigationBarType.fixed,
+        snackBarTheme: const SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.darkCard,
+          contentTextStyle: TextStyle(color: Colors.white),
+        ),
+        fontFamily: 'Inter',
+      );
+
+  static ThemeData get dark => ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: AppColors.darkBackground,
+        dividerColor: AppColors.darkBorder,
+        colorScheme: const ColorScheme.dark(
+          primary: AppColors.primary,
+          onPrimary: Colors.white,
+          surface: AppColors.darkCard,
+          surfaceContainerHighest: AppColors.darkSurfaceElevated,
+          onSurface: AppColors.darkTextPrimary,
+          onSurfaceVariant: AppColors.darkTextSecondary,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.darkBackground,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
-          selectedLabelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-          unselectedLabelStyle: TextStyle(fontSize: 11),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: AppColors.primaryLight,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
+          centerTitle: true,
+          iconTheme: IconThemeData(color: AppColors.darkTextPrimary),
+          titleTextStyle: TextStyle(
+            color: AppColors.darkTextPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        ),
+        cardTheme: CardThemeData(
+          color: AppColors.darkCard,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: AppColors.darkBorder),
+          ),
+        ),
+        snackBarTheme: const SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.darkSurfaceElevated,
+          contentTextStyle: TextStyle(color: Colors.white),
         ),
         fontFamily: 'Inter',
       );

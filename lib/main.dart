@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'app.dart';
 
-void main() {
+import 'app.dart';
+import 'core/app_store.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  runApp(const OfflineGamesApp());
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  final store = await AppStore.load();
+  runApp(ArrowBoxApp(store: store));
 }
