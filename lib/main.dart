@@ -1,12 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'app.dart';
 import 'core/app_store.dart';
+import 'startup.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  final store = await AppStore.load();
-  runApp(ArrowBoxApp(store: store));
+  unawaited(
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
+  );
+  runApp(ArrowBoxStartup(storeLoader: AppStore.load));
 }

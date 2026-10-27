@@ -1,12 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:locate/app.dart';
 import 'package:locate/core/app_store.dart';
+import 'package:locate/startup.dart';
+import 'package:locate/core/theme/app_theme.dart';
 import 'package:locate/features/arrowbox/arrowbox_logic.dart';
 import 'package:locate/features/arrowbox/arrowbox_screen.dart';
 import 'package:locate/features/arrowbox/arrowbox_board_widgets.dart';
 import 'package:locate/core/widgets/arrowbox_widgets.dart';
+import 'package:locate/features/arrowbox/arrowbox_dialogs.dart';
 
 void main() {
   setUp(() {
@@ -16,6 +21,82 @@ void main() {
       'gamesPlayed': 5,
       'totalMistakes': 8,
     });
+  });
+
+  testWidgets('Startup shows splash while store initialization is pending', (tester) async {
+    final pending = Completer<AppStore>();
+
+    await tester.pumpWidget(ArrowBoxStartup(storeLoader: () => pending.future));
+    await tester.pump();
+
+    expect(find.text('Preparing your game'), findsOneWidget);
+    expect(find.text('Play Now'), findsNothing);
+  });
+
+  testWidgets('Startup shows landing after one successful store load', (tester) async {
+    var loadCount = 0;
+    final store = await AppStore.load();
+
+    await tester.pumpWidget(ArrowBoxStartup(storeLoader: () async {
+      loadCount++;
+      return store;
+    }));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Play Now'), findsOneWidget);
+    expect(loadCount, 1);
+  });
+
+  testWidgets('Startup converts synchronous loader errors into retry UI', (tester) async {
+    await tester.pumpWidget(ArrowBoxStartup(storeLoader: () {
+      throw StateError('sync load failed');
+    }));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ArrowBox could not start'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+  });
+
+  testWidgets('Startup failure can retry without duplicate pending loads', (tester) async {
+    final first = Completer<AppStore>();
+    final second = Completer<AppStore>();
+    var loadCount = 0;
+    final store = await AppStore.load();
+
+    await tester.pumpWidget(ArrowBoxStartup(storeLoader: () {
+      loadCount++;
+      return loadCount == 1 ? first.future : second.future;
+    }));
+    await tester.pump();
+    first.completeError(StateError('load failed'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ArrowBox could not start'), findsOneWidget);
+    expect(loadCount, 1);
+
+    await tester.tap(find.text('Retry'));
+    await tester.pump();
+    expect(find.text('Play Now'), findsNothing);
+    expect(loadCount, 2);
+
+    second.complete(store);
+    await tester.pumpAndSettle();
+    expect(find.text('Play Now'), findsOneWidget);
+  });
+
+  testWidgets('Landing screen uses the cube logo asset', (tester) async {
+    final store = await AppStore.load();
+    await tester.pumpWidget(ArrowBoxApp(store: store));
+    await tester.pumpAndSettle();
+
+    final logo = tester.widget<Image>(find.byWidgetPredicate(
+      (widget) => widget is Image &&
+          widget.image is AssetImage &&
+          (widget.image as AssetImage).assetName ==
+              'assets/images/arrowbox_cube_logo.png',
+    ).first);
+    expect(logo.fit, BoxFit.contain);
   });
 
   testWidgets('Landing screen renders title, tagline and action buttons', (tester) async {
@@ -29,6 +110,43 @@ void main() {
     expect(find.text('Progress'), findsOneWidget);
     expect(find.text('How to Play'), findsOneWidget);
     expect(find.text('About'), findsOneWidget);
+  });
+
+  testWidgets('Landing screen fits a narrow viewport', (tester) async {
+    tester.view.physicalSize = const Size(640, 1200);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(() => tester.view.reset());
+
+    final store = await AppStore.load();
+    await tester.pumpWidget(ArrowBoxApp(store: store));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Play Now navigates to level selection', (tester) async {
+    final store = await AppStore.load();
+    await tester.pumpWidget(ArrowBoxApp(store: store));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Play Now'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Select Level'), findsOneWidget);
+  });
+
+  testWidgets('Continue Level appears and opens the saved level', (tester) async {
+    final store = await AppStore.load();
+    await store.saveGame(ArrowBoxState.initial(level: 7).withSeconds(4));
+
+    await tester.pumpWidget(ArrowBoxApp(store: store));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Continue Level 7'), findsOneWidget);
+    await tester.tap(find.text('Continue Level 7'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Level 7'), findsOneWidget);
   });
 
   testWidgets('Level Selection screen displays the expanded catalog', (tester) async {
@@ -94,6 +212,63 @@ void main() {
     expect(find.text('The blue arrow can escape upward.'), findsOneWidget);
     expect(find.text('Undo'), findsOneWidget);
     expect(find.text('Restart'), findsOneWidget);
+  });
+
+  testWidgets('Gameplay screen fits a narrow viewport', (tester) async {
+    tester.view.physicalSize = const Size(640, 1200);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(() => tester.view.reset());
+
+    final store = await AppStore.load();
+    await tester.pumpWidget(MaterialApp(
+      home: ArrowBoxScreen(
+        store: store,
+        initialState: ArrowBoxState.initial(level: 3),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Completion dialog text has no decoration in both themes', (tester) async {
+    for (final brightness in [Brightness.light, Brightness.dark]) {
+      await tester.pumpWidget(MaterialApp(
+        theme: brightness == Brightness.light ? AppTheme.light : AppTheme.dark,
+        home: Scaffold(
+          body: ArrowBoxLevelCompleteDialog(
+            level: 3,
+            moves: 6,
+            mistakes: 0,
+            hintsUsed: 0,
+            stars: 3,
+            seconds: 42,
+            onNextLevel: () {},
+            onReplayLevel: () {},
+            onLevelSelection: () {},
+            onMainMenu: () {},
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      final title = tester.widget<Text>(find.text('Level Complete!'));
+      final subtitle = tester.widget<Text>(find.text('Great job!'));
+      expect(title.style?.decoration, isNot(TextDecoration.underline));
+      expect(subtitle.style?.decoration, isNot(TextDecoration.underline));
+    }
+  });
+
+  testWidgets('App theme selection changes effective brightness', (tester) async {
+    final store = await AppStore.load();
+    await store.setThemeMode(ThemeMode.light);
+    await tester.pumpWidget(ArrowBoxApp(store: store));
+    await tester.pumpAndSettle();
+    expect(Theme.of(tester.element(find.text('Play Now'))).brightness, Brightness.light);
+
+    await store.setThemeMode(ThemeMode.dark);
+    await tester.pumpAndSettle();
+    expect(Theme.of(tester.element(find.text('Play Now'))).brightness, Brightness.dark);
   });
 
   testWidgets('Settings screen renders categories and switches', (tester) async {

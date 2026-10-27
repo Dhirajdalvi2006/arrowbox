@@ -134,106 +134,22 @@ class ArrowBoxLogoMark extends StatelessWidget {
           'assets/images/arrowbox_cube_logo.png',
           width: size,
           height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => CustomPaint(
-            size: Size(size, size),
-            painter: _IsometricCubePainter(),
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) => Tooltip(
+            message: 'ArrowBox logo asset failed to load',
+            child: ColoredBox(
+              color: const Color(0xFF070D1A),
+              child: Icon(
+                Icons.broken_image_outlined,
+                color: AppColors.cyan,
+                size: size * 0.5,
+              ),
+            ),
           ),
         ),
       ),
     );
   }
-}
-
-class _IsometricCubePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final center = Offset(w / 2, h / 2);
-    final r = w * 0.44;
-
-    final topCenter = center;
-    final topTop = Offset(center.dx, center.dy - r);
-    final topRight = Offset(center.dx + r * 0.866, center.dy - r * 0.5);
-    final topLeft = Offset(center.dx - r * 0.866, center.dy - r * 0.5);
-    final bottomCenter = Offset(center.dx, center.dy + r);
-    final bottomRight = Offset(center.dx + r * 0.866, center.dy + r * 0.5);
-    final bottomLeft = Offset(center.dx - r * 0.866, center.dy + r * 0.5);
-
-    final linePaint = Paint()
-      ..color = const Color(0x6621D4FD)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * 0.04;
-
-    // Top Face (Cyan)
-    final topFace = Path()
-      ..moveTo(topCenter.dx, topCenter.dy)
-      ..lineTo(topRight.dx, topRight.dy)
-      ..lineTo(topTop.dx, topTop.dy)
-      ..lineTo(topLeft.dx, topLeft.dy)
-      ..close();
-    final topPaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFF21D4FD), Color(0xFF247BFF)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ).createShader(Rect.fromLTWH(0, 0, w, h));
-    canvas.drawPath(topFace, topPaint);
-    canvas.drawPath(topFace, linePaint);
-
-    // Left Face (Mint / Teal)
-    final leftFace = Path()
-      ..moveTo(topCenter.dx, topCenter.dy)
-      ..lineTo(topLeft.dx, topLeft.dy)
-      ..lineTo(bottomLeft.dx, bottomLeft.dy)
-      ..lineTo(bottomCenter.dx, bottomCenter.dy)
-      ..close();
-    final leftPaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFF21D98B), Color(0xFF0D5E4A)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTWH(0, 0, w, h));
-    canvas.drawPath(leftFace, leftPaint);
-    canvas.drawPath(leftFace, linePaint);
-
-    // Right Face (Amber / Orange)
-    final rightFace = Path()
-      ..moveTo(topCenter.dx, topCenter.dy)
-      ..lineTo(topRight.dx, topRight.dy)
-      ..lineTo(bottomRight.dx, bottomRight.dy)
-      ..lineTo(bottomCenter.dx, bottomCenter.dy)
-      ..close();
-    final rightPaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFFFFB547), Color(0xFFD4581A)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTWH(0, 0, w, h));
-    canvas.drawPath(rightFace, rightPaint);
-    canvas.drawPath(rightFace, linePaint);
-
-    // Top Arrow
-    final arrowPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * 0.08
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final arrowPath = Path()
-      ..moveTo(center.dx, center.dy - r * 0.15)
-      ..lineTo(center.dx, center.dy - r * 0.65)
-      ..moveTo(center.dx - r * 0.22, center.dy - r * 0.42)
-      ..lineTo(center.dx, center.dy - r * 0.65)
-      ..lineTo(center.dx + r * 0.22, center.dy - r * 0.42);
-
-    canvas.drawPath(arrowPath, arrowPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// Hero Artwork Widget for Landing and About screens matching Reference 3

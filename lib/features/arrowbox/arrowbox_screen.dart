@@ -396,43 +396,48 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
                         tooltip: 'Back',
                         onPressed: _leaveScreen,
                       ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              ArrowBoxLogoMark(size: 26),
-                              SizedBox(width: 10),
-                              ArrowBoxTitle(fontSize: 22),
-                            ],
-                          ),
-                          const SizedBox(height: 1),
-                          Row(
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                'Level ${_game.level}',
-                                style: TextStyle(
-                                  color: AppColors.getTextSecondary(context),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.5,
-                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  ArrowBoxLogoMark(size: 26),
+                                  SizedBox(width: 10),
+                                  ArrowBoxTitle(fontSize: 22),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Semantics(
-                                label:
-                                    'Level ${_game.level}, ${ArrowBoxLevel.forNumber(_game.level).difficulty.label}',
-                                child: _DifficultyBadge(
-                                  difficulty: ArrowBoxLevel.forNumber(
-                                    _game.level,
-                                  ).difficulty,
-                                ),
+                              const SizedBox(height: 1),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Level ${_game.level}',
+                                    style: TextStyle(
+                                      color: AppColors.getTextSecondary(context),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Semantics(
+                                    label:
+                                        'Level ${_game.level}, ${ArrowBoxLevel.forNumber(_game.level).difficulty.label}',
+                                    child: _DifficultyBadge(
+                                      difficulty: ArrowBoxLevel.forNumber(
+                                        _game.level,
+                                      ).difficulty,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
                       ArrowBoxHeaderIconButton(
                         icon: Icons.pause_rounded,
@@ -452,49 +457,58 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
                   ),
                   child: Row(
                     children: [
-                      Row(
-                        children: List.generate(3, (i) {
-                          final hasLife = i < _game.lives;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 5),
-                            child: Icon(
-                              hasLife
-                                  ? Icons.favorite_rounded
-                                  : Icons.favorite_border_rounded,
-                              color: hasLife
-                                  ? const Color(0xFFFF4D6D)
-                                  : (isDark
-                                        ? const Color(0xFF33445D)
-                                        : const Color(0xFFCAD6E6)),
-                              size: 27,
-                              shadows: hasLife
-                                  ? const [
-                                      Shadow(
-                                        color: Color(0x66FF365F),
-                                        blurRadius: 8,
-                                      ),
-                                    ]
-                                  : null,
+                      Flexible(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ...List.generate(3, (i) {
+                              final hasLife = i < _game.lives;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 5),
+                                child: Icon(
+                                  hasLife
+                                      ? Icons.favorite_rounded
+                                      : Icons.favorite_border_rounded,
+                                  color: hasLife
+                                      ? const Color(0xFFFF4D6D)
+                                      : (isDark
+                                            ? const Color(0xFF33445D)
+                                            : const Color(0xFFCAD6E6)),
+                                  size: 27,
+                                  shadows: hasLife
+                                      ? const [
+                                          Shadow(
+                                            color: Color(0x66FF365F),
+                                            blurRadius: 8,
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                              );
+                            }),
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 1,
+                              height: 28,
+                              color: AppColors.getBorder(context),
                             ),
-                          );
-                        }),
-                      ),
-                      const SizedBox(width: 13),
-                      Container(
-                        width: 1,
-                        height: 28,
-                        color: AppColors.getBorder(context),
-                      ),
-                      const SizedBox(width: 13),
-                      Text(
-                        '${_game.mistakes} mistakes',
-                        style: TextStyle(
-                          color: AppColors.getTextSecondary(context),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                '${_game.mistakes} mistakes',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: AppColors.getTextSecondary(context),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 9,
@@ -545,7 +559,7 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
                       child: LayoutBuilder(
                         builder: (context, constraints) {
                           final boardWidth = (constraints.maxWidth - 4).clamp(
-                            240.0,
+                            0.0,
                             420.0,
                           );
 

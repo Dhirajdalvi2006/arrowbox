@@ -123,46 +123,62 @@ class WelcomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Top Bar with Mini Logo + Title and Theme Toggle + Settings
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Row(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 360;
+                  final controlSize = compact ? 44.0 : 56.0;
+                  return Row(
                     children: [
-                      ArrowBoxLogoMark(size: 28),
-                      SizedBox(width: 8),
-                      ArrowBoxTitle(fontSize: 20),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      ArrowBoxHeaderIconButton(
-                        icon: isDark
-                            ? Icons.light_mode_rounded
-                            : Icons.dark_mode_rounded,
-                        tooltip: 'Toggle Theme',
-                        onPressed: () {
-                          final current = store.themeMode;
-                          if (current == ThemeMode.dark) {
-                            store.setThemeMode(ThemeMode.light);
-                          } else {
-                            store.setThemeMode(ThemeMode.dark);
-                          }
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      ArrowBoxHeaderIconButton(
-                        icon: Icons.settings_rounded,
-                        tooltip: 'Settings',
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => SettingsScreen(store: store),
+                      Expanded(
+                        child: FittedBox(
+                          alignment: Alignment.centerLeft,
+                          fit: BoxFit.scaleDown,
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ArrowBoxLogoMark(size: 28),
+                              SizedBox(width: 8),
+                              ArrowBoxTitle(fontSize: 20),
+                            ],
                           ),
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ArrowBoxHeaderIconButton(
+                            size: controlSize,
+                            icon: isDark
+                                ? Icons.light_mode_rounded
+                                : Icons.dark_mode_rounded,
+                            tooltip: 'Toggle Theme',
+                            onPressed: () {
+                              final current = store.themeMode;
+                              if (current == ThemeMode.dark) {
+                                store.setThemeMode(ThemeMode.light);
+                              } else {
+                                store.setThemeMode(ThemeMode.dark);
+                              }
+                            },
+                          ),
+                          SizedBox(width: compact ? 4 : 8),
+                          ArrowBoxHeaderIconButton(
+                            size: controlSize,
+                            icon: Icons.settings_rounded,
+                            tooltip: 'Settings',
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => SettingsScreen(store: store),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
-                  ),
-                ],
+                  );
+                },
               ),
 
               const SizedBox(height: 14),
