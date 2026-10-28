@@ -1,38 +1,45 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/arrowbox/arrowbox_logic.dart';
+import '../features/arrow_designs/arrow_designs.dart';
 
 class AppStore extends ChangeNotifier {
   AppStore._(this._prefs)
-      : unlockedLevel = _validLevel(_prefs.getInt('unlockedLevel')),
-        completedLevels = _validCompletedLevels(_prefs.getStringList('completedLevels')),
-        levelStars = _validLevelStars(_prefs.getStringList('levelStars')),
-        gamesPlayed = _nonNegative(_prefs.getInt('gamesPlayed')),
-        totalMistakes = _nonNegative(_prefs.getInt('totalMistakes')),
-        soundEnabled = _prefs.getBool('soundEnabled') ?? true,
-        musicEnabled = _prefs.getBool('musicEnabled') ?? true,
-        musicVolume = _prefs.getDouble('musicVolume') ?? 0.7,
-        hapticsEnabled = _prefs.getBool('hapticsEnabled') ?? true,
-        hintsEnabled = _prefs.getBool('hintsEnabled') ?? true,
-        confirmRestart = _prefs.getBool('confirmRestart') ?? true,
-        themeMode = _validThemeMode(_prefs.getInt('themeMode'));
+    : unlockedLevel = _validLevel(_prefs.getInt('unlockedLevel')),
+      completedLevels = _validCompletedLevels(
+        _prefs.getStringList('completedLevels'),
+      ),
+      levelStars = _validLevelStars(_prefs.getStringList('levelStars')),
+      gamesPlayed = _nonNegative(_prefs.getInt('gamesPlayed')),
+      totalMistakes = _nonNegative(_prefs.getInt('totalMistakes')),
+      soundEnabled = _prefs.getBool('soundEnabled') ?? true,
+      musicEnabled = _prefs.getBool('musicEnabled') ?? true,
+      musicVolume = _prefs.getDouble('musicVolume') ?? 0.7,
+      hapticsEnabled = _prefs.getBool('hapticsEnabled') ?? true,
+      hintsEnabled = _prefs.getBool('hintsEnabled') ?? true,
+      confirmRestart = _prefs.getBool('confirmRestart') ?? true,
+      themeMode = _validThemeMode(_prefs.getInt('themeMode')),
+      arrowSkinId = _validSkinId(_prefs.getString('arrowSkinId')),
+      boardThemeId = _validBoardThemeId(_prefs.getString('boardThemeId'));
 
   static int get totalLevels => ArrowBoxLevel.count;
 
   static int _validLevel(int? value) =>
       value != null && value >= 1 && value <= totalLevels ? value : 1;
 
-  static int _nonNegative(int? value) => value != null && value >= 0 ? value : 0;
+  static int _nonNegative(int? value) =>
+      value != null && value >= 0 ? value : 0;
 
   static Set<int> _validCompletedLevels(List<String>? values) => values == null
       ? {}
       : values
-          .map(int.tryParse)
-          .whereType<int>()
-          .where((value) => value >= 1 && value <= totalLevels)
-          .toSet();
+            .map(int.tryParse)
+            .whereType<int>()
+            .where((value) => value >= 1 && value <= totalLevels)
+            .toSet();
 
   static Map<int, int> _validLevelStars(List<String>? values) {
     if (values == null) return {};
@@ -42,8 +49,12 @@ class AppStore extends ChangeNotifier {
       if (parts.length != 2) continue;
       final level = int.tryParse(parts[0]);
       final stars = int.tryParse(parts[1]);
-      if (level != null && stars != null &&
-          level >= 1 && level <= totalLevels && stars >= 1 && stars <= 3) {
+      if (level != null &&
+          stars != null &&
+          level >= 1 &&
+          level <= totalLevels &&
+          stars >= 1 &&
+          stars <= 3) {
         result[level] = stars;
       }
     }
@@ -52,8 +63,20 @@ class AppStore extends ChangeNotifier {
 
   static ThemeMode _validThemeMode(int? value) =>
       value != null && value >= 0 && value < ThemeMode.values.length
-          ? ThemeMode.values[value]
-          : ThemeMode.dark; // Default to Dark theme as per reference
+      ? ThemeMode.values[value]
+      : ThemeMode.dark;
+
+  static ArrowSkinId _validSkinId(String? value) =>
+      ArrowSkinId.values.firstWhere(
+        (skin) => skin.name == value,
+        orElse: () => ArrowSkinId.classic,
+      );
+
+  static BoardThemeId _validBoardThemeId(String? value) =>
+      BoardThemeId.values.firstWhere(
+        (theme) => theme.name == value,
+        orElse: () => BoardThemeId.midnight,
+      );
 
   final SharedPreferences _prefs;
   Future<void> _writeQueue = Future<void>.value();
@@ -70,11 +93,13 @@ class AppStore extends ChangeNotifier {
   bool hintsEnabled;
   bool confirmRestart;
   ThemeMode themeMode;
+  ArrowSkinId arrowSkinId;
+  BoardThemeId boardThemeId;
   ArrowBoxState? savedGame;
   final Map<int, ArrowBoxState> savedGames = {};
 
-  bool get hasSavedGame => savedGame != null &&
-      !savedGame!.isCleared && !savedGame!.isGameOver;
+  bool get hasSavedGame =>
+      savedGame != null && !savedGame!.isCleared && !savedGame!.isGameOver;
 
   bool get hasProgress => completedLevels.isNotEmpty || unlockedLevel > 1;
 
@@ -85,7 +110,9 @@ class AppStore extends ChangeNotifier {
     if (savedGames != null) {
       for (final entry in savedGames) {
         try {
-          final state = ArrowBoxState.fromJson(jsonDecode(entry) as Map<String, dynamic>);
+          final state = ArrowBoxState.fromJson(
+            jsonDecode(entry) as Map<String, dynamic>,
+          );
           if (!state.isCleared && !state.isGameOver) {
             store.savedGames[state.level] = state;
           }
@@ -99,7 +126,9 @@ class AppStore extends ChangeNotifier {
       final saved = prefs.getString('savedGame');
       if (saved != null) {
         try {
-          final state = ArrowBoxState.fromJson(jsonDecode(saved) as Map<String, dynamic>);
+          final state = ArrowBoxState.fromJson(
+            jsonDecode(saved) as Map<String, dynamic>,
+          );
           if (!state.isCleared && !state.isGameOver) {
             store.savedGames[state.level] = state;
           }
@@ -169,18 +198,14 @@ class AppStore extends ChangeNotifier {
     }
   }
 
-  Future<void> recordCompletion(
-    int level,
-    int mistakes, {
-    int hintsUsed = 0,
-  }) {
+  Future<void> recordCompletion(int level, int mistakes, {int hintsUsed = 0}) {
     return _enqueueWrite(() async {
       completedLevels = {...completedLevels, level};
       final stars = mistakes == 0 && hintsUsed == 0
           ? 3
           : mistakes <= 1 && hintsUsed <= 1
-              ? 2
-              : 1;
+          ? 2
+          : 1;
       final previousStars = levelStars[level] ?? 0;
       if (stars > previousStars) levelStars[level] = stars;
       if (level < totalLevels) {
@@ -204,6 +229,22 @@ class AppStore extends ChangeNotifier {
     return _enqueueWrite(() async {
       themeMode = value;
       await _prefs.setInt('themeMode', value.index);
+      notifyListeners();
+    });
+  }
+
+  Future<void> setArrowSkin(ArrowSkinId value) {
+    return _enqueueWrite(() async {
+      arrowSkinId = value;
+      await _prefs.setString('arrowSkinId', value.name);
+      notifyListeners();
+    });
+  }
+
+  Future<void> setBoardTheme(BoardThemeId value) {
+    return _enqueueWrite(() async {
+      boardThemeId = value;
+      await _prefs.setString('boardThemeId', value.name);
       notifyListeners();
     });
   }
@@ -265,6 +306,8 @@ class AppStore extends ChangeNotifier {
     hintsEnabled = true;
     confirmRestart = true;
     themeMode = ThemeMode.dark;
+    arrowSkinId = ArrowSkinId.classic;
+    boardThemeId = BoardThemeId.midnight;
     for (final key in [
       'soundEnabled',
       'musicEnabled',
@@ -272,6 +315,8 @@ class AppStore extends ChangeNotifier {
       'hapticsEnabled',
       'hintsEnabled',
       'confirmRestart',
+      'arrowSkinId',
+      'boardThemeId',
     ]) {
       await _prefs.remove(key);
     }

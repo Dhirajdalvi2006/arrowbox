@@ -1,0 +1,13 @@
+level,difficulty,arrows,runtime_ms,status,error
+200,medium,,7838,invalid,"StateError: Unable to generate solvable board for seed 1583901"
+350,hard,,15708,invalid,"StateError: Unable to generate solvable board for seed 2771861"
+351,ultraHard,,14594,invalid,"StateError: Unable to generate solvable board for seed 2779876"
+1,easy,8,22,generated,
+50,easy,15,12,generated,
+100,easy,20,13,generated,
+101,medium,16,28,generated,
+150,medium,19,3,generated,
+201,hard,20,341,generated,
+275,hard,22,2764,generated,
+425,ultraHard,25,2398,generated,
+500,ultraHard,25,6917,generated,

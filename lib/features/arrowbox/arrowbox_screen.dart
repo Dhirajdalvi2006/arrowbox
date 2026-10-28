@@ -9,6 +9,7 @@ import '../../core/widgets/arrowbox_widgets.dart';
 import 'arrowbox_board_widgets.dart';
 import 'arrowbox_dialogs.dart';
 import 'arrowbox_logic.dart';
+import '../arrow_designs/arrow_designs.dart';
 import '../../app.dart';
 
 class ArrowBoxScreen extends StatefulWidget {
@@ -39,6 +40,7 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    widget.store.addListener(_appearanceChanged);
     _game = widget.initialState ?? ArrowBoxState.initial();
     _seconds = _game.secondsElapsed;
     if (_seconds > 0) {
@@ -77,8 +79,13 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
     return '$m:$s';
   }
 
+  void _appearanceChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    widget.store.removeListener(_appearanceChanged);
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _saveCurrentGame();
@@ -358,6 +365,8 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
     final bgColor = AppColors.getBackground(context);
+    final skin = ArrowSkinRegistry.byId(widget.store.arrowSkinId);
+    final boardTheme = BoardThemeRegistry.byId(widget.store.boardThemeId);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -417,7 +426,9 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
                                   Text(
                                     'Level ${_game.level}',
                                     style: TextStyle(
-                                      color: AppColors.getTextSecondary(context),
+                                      color: AppColors.getTextSecondary(
+                                        context,
+                                      ),
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                       letterSpacing: 0.5,
@@ -574,14 +585,14 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
                                   color: isDark
-                                      ? const Color(0xFF040C18)
+                                      ? boardTheme.frame
                                       : AppColors.getSecondaryBackground(
                                           context,
                                         ),
                                   borderRadius: BorderRadius.circular(28),
                                   border: Border.all(
                                     color: isDark
-                                        ? const Color(0x7721D4FD)
+                                        ? boardTheme.frameBorder
                                         : AppColors.getBorder(context),
                                     width: 1.5,
                                   ),
@@ -630,10 +641,13 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
                                               width: tileSize,
                                               height: tileSize,
                                               child: _game.board[index] == null
-                                                  ? const EmptyBoardCell()
+                                                  ? EmptyBoardCell(
+                                                      theme: boardTheme,
+                                                    )
                                                   : GradientArrowTile(
                                                       direction:
                                                           _game.board[index]!,
+                                                      skin: skin,
                                                       index: index,
                                                       highlighted:
                                                           index == _hintIndex,
@@ -764,6 +778,7 @@ class _DifficultyBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (difficulty) {
+      ArrowBoxDifficulty.easy => AppColors.success,
       ArrowBoxDifficulty.medium => AppColors.cyan,
       ArrowBoxDifficulty.hard => AppColors.warning,
       ArrowBoxDifficulty.ultraHard => AppColors.error,

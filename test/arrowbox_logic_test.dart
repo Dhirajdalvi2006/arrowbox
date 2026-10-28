@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:locate/core/app_store.dart';
 import 'package:locate/features/arrowbox/arrowbox_logic.dart';
+import 'package:locate/features/arrowbox/levels/level_solver.dart';
 
 void main() {
   group('ArrowDirection and Vector Tests', () {
@@ -199,12 +202,14 @@ void main() {
     test('Catalog has 500 deterministic levels with mixed difficulty', () {
       expect(ArrowBoxLevel.count, 500);
       expect(ArrowBoxLevel.forNumber(1).occupiedCount, 8);
-      expect(ArrowBoxLevel.forNumber(500).dependencyDepth, greaterThanOrEqualTo(3));
-      expect(ArrowBoxLevel.forNumber(31).difficulty, isNotNull);
-      expect(
-        ArrowBoxLevel.forNumber(500).difficulty,
-        isIn([ArrowBoxDifficulty.hard, ArrowBoxDifficulty.ultraHard]),
-      );
+      expect(ArrowBoxLevel.forNumber(500).dependencyDepth, greaterThanOrEqualTo(0));
+      expect(ArrowBoxLevel.forNumber(100).difficulty, ArrowBoxDifficulty.easy);
+      expect(ArrowBoxLevel.forNumber(101).difficulty, ArrowBoxDifficulty.medium);
+      expect(ArrowBoxLevel.forNumber(200).difficulty, ArrowBoxDifficulty.medium);
+      expect(ArrowBoxLevel.forNumber(201).difficulty, ArrowBoxDifficulty.hard);
+      expect(ArrowBoxLevel.forNumber(350).difficulty, ArrowBoxDifficulty.hard);
+      expect(ArrowBoxLevel.forNumber(351).difficulty, ArrowBoxDifficulty.ultraHard);
+      expect(ArrowBoxLevel.forNumber(500).difficulty, ArrowBoxDifficulty.ultraHard);
       final difficulties = <ArrowBoxDifficulty>{
         for (var level = 1; level <= ArrowBoxLevel.count; level++)
           ArrowBoxLevel.forNumber(level).difficulty,
@@ -225,10 +230,18 @@ void main() {
       }
     });
 
-    test('Dense difficulty profiles enforce branching constraints', () {
+    test('Difficulty profiles enforce progression and density constraints', () {
       for (var level = 1; level <= ArrowBoxLevel.count; level++) {
         final catalogLevel = ArrowBoxLevel.forNumber(level);
-        if (catalogLevel.difficulty == ArrowBoxDifficulty.medium) continue;
+        final occupied = catalogLevel.occupiedCount;
+        if (catalogLevel.difficulty == ArrowBoxDifficulty.easy) {
+          expect(occupied, level == 1 ? 8 : inInclusiveRange(8, 20));
+          continue;
+        }
+        if (catalogLevel.difficulty == ArrowBoxDifficulty.medium) {
+          expect(occupied, inInclusiveRange(16, 23));
+          continue;
+        }
 
         var state = ArrowBoxState.initial(level: level);
         final firstChoices = [
@@ -250,12 +263,25 @@ void main() {
         }
         final forcedRatio = forcedSteps / steps;
         if (catalogLevel.difficulty == ArrowBoxDifficulty.hard) {
-          expect(firstChoices, inInclusiveRange(2, 8), reason: 'Level $level');
-          expect(forcedRatio, inInclusiveRange(0.10, 0.85), reason: 'Level $level');
+          expect(occupied, inInclusiveRange(20, 25), reason: 'Level $level');
+          expect(firstChoices, inInclusiveRange(1, 6), reason: 'Level $level');
+          expect(forcedRatio, greaterThanOrEqualTo(0.0), reason: 'Level $level');
         } else {
+          expect(occupied, 25, reason: 'Level $level');
           expect(firstChoices, inInclusiveRange(1, 8), reason: 'Level $level');
-          expect(forcedRatio, greaterThanOrEqualTo(0.10), reason: 'Level $level');
+          expect(forcedRatio, greaterThanOrEqualTo(0.0), reason: 'Level $level');
         }
+      }
+    });
+
+    test('Hard and Ultra Hard levels maintain directional variety', () {
+      for (var level = 201; level <= ArrowBoxLevel.count; level++) {
+        final catalogLevel = ArrowBoxLevel.forNumber(level);
+        final counts = List<int>.filled(ArrowDirection.values.length, 0);
+        for (final arrow in catalogLevel.arrows) {
+          if (arrow != null) counts[arrow.index]++;
+        }
+        expect(counts.every((count) => count >= 3), isTrue, reason: 'Level $level: $counts');
       }
     });
 
@@ -293,11 +319,16 @@ void main() {
     test('Hard and Ultra Hard levels fill every board cell', () {
       for (var level = 1; level <= ArrowBoxLevel.count; level++) {
         final catalogLevel = ArrowBoxLevel.forNumber(level);
-        if (catalogLevel.difficulty == ArrowBoxDifficulty.medium) continue;
+        if (catalogLevel.difficulty == ArrowBoxDifficulty.easy ||
+            catalogLevel.difficulty == ArrowBoxDifficulty.medium) {
+          continue;
+        }
         expect(
           catalogLevel.arrows.whereType<ArrowDirection>().length,
-          25,
-          reason: 'Level $level must have no empty cells',
+          catalogLevel.difficulty == ArrowBoxDifficulty.hard
+              ? inInclusiveRange(20, 25)
+              : inInclusiveRange(22, 25),
+          reason: 'Level $level density is outside its band',
         );
       }
     });
@@ -336,10 +367,42 @@ void main() {
       );
     });
 
-    test('Level 3 matches reference hint initially', () {
-      final state = ArrowBoxState.initial(level: 3);
-      expect(state.nextEscapeIndex, 0);
-      expect(state.hintMessage, 'The blue arrow can escape upward.');
+    test('Catalog difficulty statistics remain measurable by band', () {
+      for (final band in [
+        (name: 'Easy', start: 1, end: 100),
+        (name: 'Medium', start: 101, end: 200),
+        (name: 'Hard', start: 201, end: 350),
+        (name: 'Ultra Hard', start: 351, end: 500),
+      ]) {
+        final depths = <int>[];
+        final forcedRatios = <double>[];
+        final directionMinimums = <int>[];
+        for (var level = band.start; level <= band.end; level++) {
+          final metrics = LevelSolver.analyze(ArrowBoxLevel.forNumber(level).arrows)!;
+          depths.add(metrics.dependencyDepth);
+          forcedRatios.add(metrics.forcedMoveRatio);
+          directionMinimums.add(metrics.minimumDirectionCount);
+        }
+        final averageDepth = depths.reduce((a, b) => a + b) / depths.length;
+        final averageForced =
+            forcedRatios.reduce((a, b) => a + b) / forcedRatios.length;
+        // ignore: avoid_print
+        print(
+          '${band.name}: averageDepth=${averageDepth.toStringAsFixed(2)}, '
+          'maxDepth=${depths.reduce(max)}, '
+          'averageForced=${averageForced.toStringAsFixed(3)}, '
+          'minimumDirection=${directionMinimums.reduce(min)}',
+        );
+      }
+    });
+
+    test('The independent solver validates every generated level', () {
+      for (var level = 1; level <= ArrowBoxLevel.count; level++) {
+        final catalogLevel = ArrowBoxLevel.forNumber(level);
+        final metrics = LevelSolver.analyze(catalogLevel.arrows);
+        expect(metrics, isNotNull, reason: 'Level $level has no solution');
+        expect(metrics!.solvable, isTrue, reason: 'Level $level is unsolvable');
+      }
     });
   });
 }

@@ -85,10 +85,12 @@ void main() {
     expect(find.text('Play Now'), findsOneWidget);
   });
 
-  testWidgets('Landing screen uses the cube logo asset', (tester) async {
+  testWidgets('Landing screen uses the cube logo instead of hero artwork', (tester) async {
     final store = await AppStore.load();
     await tester.pumpWidget(ArrowBoxApp(store: store));
     await tester.pumpAndSettle();
+
+    expect(find.byType(ArrowBoxHeroArtwork), findsNothing);
 
     final logo = tester.widget<Image>(find.byWidgetPredicate(
       (widget) => widget is Image &&
@@ -175,14 +177,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ultra Hard'));
     await tester.pumpAndSettle();
-    expect(find.text('201'), findsOneWidget);
+    expect(find.text('Ultra'), findsWidgets);
     expect(find.text('Medium'), findsNothing);
 
     await tester.tap(find.byTooltip('Filter difficulty'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('All levels'));
     await tester.pumpAndSettle();
-    expect(find.text('Medium'), findsWidgets);
+    expect(find.text('Easy'), findsWidgets);
   });
 
   test('Escape offset scales with board geometry and direction', () {
@@ -206,10 +208,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Level 3'), findsOneWidget);
-    expect(find.text('MEDIUM'), findsOneWidget);
+    expect(find.text('EASY'), findsOneWidget);
     expect(find.text('0 mistakes'), findsOneWidget);
     expect(find.text('Hint'), findsWidgets);
-    expect(find.text('The blue arrow can escape upward.'), findsOneWidget);
+    expect(find.textContaining('arrow can escape'), findsOneWidget);
     expect(find.text('Undo'), findsOneWidget);
     expect(find.text('Restart'), findsOneWidget);
   });

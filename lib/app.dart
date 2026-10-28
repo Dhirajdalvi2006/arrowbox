@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -9,6 +10,7 @@ import 'core/widgets/arrowbox_widgets.dart';
 import 'features/arrowbox/arrowbox_dialogs.dart';
 import 'features/arrowbox/arrowbox_logic.dart';
 import 'features/arrowbox/arrowbox_screen.dart';
+import 'features/shell/app_shell.dart';
 
 class ArrowBoxApp extends StatelessWidget {
   const ArrowBoxApp({required this.store, super.key});
@@ -75,7 +77,7 @@ class ArrowBoxApp extends StatelessWidget {
         case 'about':
           return const AboutScreen();
         default:
-          return WelcomeScreen(store: store);
+          return AppShell(store: store);
       }
     }
 
@@ -101,7 +103,6 @@ class ArrowBoxApp extends StatelessWidget {
     );
   }
 }
-
 
 // ---------------------------------------------------------------------------
 // 1. LANDING SCREEN (Reference Screen 1)
@@ -183,8 +184,16 @@ class WelcomeScreen extends StatelessWidget {
 
               const SizedBox(height: 14),
 
-              // Hero Cube Artwork
-              const ArrowBoxHeroArtwork(size: 220),
+              // Central app logo
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final logoSize = (constraints.maxWidth * 0.48).clamp(
+                    128.0,
+                    180.0,
+                  );
+                  return Center(child: ArrowBoxLogoMark(size: logoSize));
+                },
+              ),
 
               const SizedBox(height: 18),
 
@@ -265,7 +274,8 @@ class WelcomeScreen extends StatelessWidget {
                   ArrowBoxActionCard(
                     icon: Icons.bar_chart_rounded,
                     title: 'Progress',
-                    subtitle: '${store.completedLevels.length} / ${AppStore.totalLevels} levels',
+                    subtitle:
+                        '${store.completedLevels.length} / ${AppStore.totalLevels} levels',
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -292,14 +302,13 @@ class WelcomeScreen extends StatelessWidget {
                     subtitle: 'Game info',
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const AboutScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const AboutScreen()),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
+              const SizedBox(height: 96),
             ],
           ),
         ),
@@ -312,8 +321,13 @@ class WelcomeScreen extends StatelessWidget {
 // 2. LEVEL SELECTION SCREEN (Reference Screen 2)
 // ---------------------------------------------------------------------------
 class LevelSelectionScreen extends StatefulWidget {
-  const LevelSelectionScreen({required this.store, super.key});
+  const LevelSelectionScreen({
+    required this.store,
+    this.embedded = false,
+    super.key,
+  });
   final AppStore store;
+  final bool embedded;
 
   @override
   State<LevelSelectionScreen> createState() => _LevelSelectionScreenState();
@@ -335,9 +349,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
           controller: controller,
           autofocus: true,
           keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            hintText: '1-${AppStore.totalLevels}',
-          ),
+          decoration: InputDecoration(hintText: '1-${AppStore.totalLevels}'),
           onSubmitted: (_) => Navigator.pop(
             dialogContext,
             int.tryParse(controller.text.trim()),
@@ -359,7 +371,10 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
       ),
     );
     controller.dispose();
-    if (!mounted || level == null || level < 1 || level > AppStore.totalLevels) {
+    if (!mounted ||
+        level == null ||
+        level < 1 ||
+        level > AppStore.totalLevels) {
       return;
     }
     await Navigator.push(
@@ -367,8 +382,8 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
       MaterialPageRoute(
         builder: (_) => ArrowBoxScreen(
           store: store,
-          initialState: store.savedGames[level] ??
-              ArrowBoxState.initial(level: level),
+          initialState:
+              store.savedGames[level] ?? ArrowBoxState.initial(level: level),
         ),
       ),
     );
@@ -384,14 +399,16 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
   Widget build(BuildContext context) {
     final completedCount = store.completedLevels.length;
     final query = _searchController.text.trim();
-    final filteredLevels = List<int>.generate(AppStore.totalLevels, (index) => index + 1)
-        .where((level) {
-          final matchesQuery = query.isEmpty || level.toString().contains(query);
+    final filteredLevels =
+        List<int>.generate(AppStore.totalLevels, (index) => index + 1).where((
+          level,
+        ) {
+          final matchesQuery =
+              query.isEmpty || level.toString().contains(query);
           final difficulty = ArrowBoxLevel.forNumber(level).difficulty;
           return matchesQuery &&
               (_difficultyFilter == null || difficulty == _difficultyFilter);
-        })
-        .toList();
+        }).toList();
 
     return Scaffold(
       backgroundColor: AppColors.getBackground(context),
@@ -435,11 +452,17 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.getCard(context),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.getBorder(context), width: 1.2),
+                  border: Border.all(
+                    color: AppColors.getBorder(context),
+                    width: 1.2,
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -500,11 +523,15 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                         fillColor: AppColors.getCard(context),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: AppColors.getBorder(context)),
+                          borderSide: BorderSide(
+                            color: AppColors.getBorder(context),
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: AppColors.getBorder(context)),
+                          borderSide: BorderSide(
+                            color: AppColors.getBorder(context),
+                          ),
                         ),
                       ),
                     ),
@@ -556,12 +583,14 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                 itemBuilder: (context, index) {
                   final level = filteredLevels[index];
                   final isCompleted = store.completedLevels.contains(level);
-                  final isCurrent = level == store.unlockedLevel && !isCompleted;
+                  final isCurrent =
+                      level == store.unlockedLevel && !isCompleted;
                   final isLocked = level > store.unlockedLevel;
                   final difficulty = ArrowBoxLevel.forNumber(level).difficulty;
 
                   return Semantics(
-                    label: 'Level $level, ${difficulty.label}${isLocked ? ', locked' : ''}',
+                    label:
+                        'Level $level, ${difficulty.label}${isLocked ? ', locked' : ''}',
                     button: !isLocked,
                     child: _LevelTile(
                       level: level,
@@ -573,15 +602,16 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                       onTap: isLocked
                           ? null
                           : () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ArrowBoxScreen(
-                                    store: store,
-                                    initialState: store.savedGames[level] ??
-                                        ArrowBoxState.initial(level: level),
-                                  ),
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ArrowBoxScreen(
+                                  store: store,
+                                  initialState:
+                                      store.savedGames[level] ??
+                                      ArrowBoxState.initial(level: level),
                                 ),
                               ),
+                            ),
                     ),
                   );
                 },
@@ -716,8 +746,9 @@ class _LevelTile extends StatelessWidget {
 // 7. SETTINGS SCREEN (Reference Screen 7)
 // ---------------------------------------------------------------------------
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({required this.store, super.key});
+  const SettingsScreen({required this.store, this.embedded = false, super.key});
   final AppStore store;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -734,7 +765,7 @@ class SettingsScreen extends StatelessWidget {
                   ArrowBoxHeaderIconButton(
                     icon: Icons.arrow_back_rounded,
                     tooltip: 'Back',
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: embedded ? () {} : () => Navigator.pop(context),
                   ),
                   Expanded(
                     child: Text(
@@ -805,11 +836,16 @@ class SettingsScreen extends StatelessWidget {
                       Divider(color: AppColors.getBorder(context), height: 1),
                       Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         child: Row(
                           children: [
-                            const Icon(Icons.volume_up_rounded,
-                                color: AppColors.primaryBright, size: 22),
+                            const Icon(
+                              Icons.volume_up_rounded,
+                              color: AppColors.primaryBright,
+                              size: 22,
+                            ),
                             const SizedBox(width: 14),
                             Text(
                               'Music volume',
@@ -823,7 +859,9 @@ class SettingsScreen extends StatelessWidget {
                               child: SliderTheme(
                                 data: SliderTheme.of(context).copyWith(
                                   activeTrackColor: AppColors.primaryBright,
-                                  inactiveTrackColor: AppColors.getBorder(context),
+                                  inactiveTrackColor: AppColors.getBorder(
+                                    context,
+                                  ),
                                   thumbColor: AppColors.getTextPrimary(context),
                                   overlayColor: const Color(0x33247BFF),
                                   trackHeight: 4,
@@ -935,7 +973,10 @@ class SettingsScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: AppColors.getBorder(context)),
         ),
-        title: Text(title, style: TextStyle(color: AppColors.getTextPrimary(context))),
+        title: Text(
+          title,
+          style: TextStyle(color: AppColors.getTextPrimary(context)),
+        ),
         content: Text(
           message,
           style: TextStyle(color: AppColors.getTextSecondary(context)),
@@ -943,8 +984,10 @@ class SettingsScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text('Cancel',
-                style: TextStyle(color: AppColors.getTextSecondary(context))),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.getTextSecondary(context)),
+            ),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
@@ -1080,7 +1123,9 @@ class _SettingsRadioRow extends StatelessWidget {
             Text(
               title,
               style: TextStyle(
-                color: selected ? AppColors.getTextPrimary(context) : AppColors.getTextSecondary(context),
+                color: selected
+                    ? AppColors.getTextPrimary(context)
+                    : AppColors.getTextSecondary(context),
                 fontSize: 15,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
@@ -1096,13 +1141,17 @@ class _SettingsRadioRow extends StatelessWidget {
 // 8. PROGRESS SCREEN (Reference Screen 8)
 // ---------------------------------------------------------------------------
 class ProgressScreen extends StatelessWidget {
-  const ProgressScreen({required this.store, super.key});
+  const ProgressScreen({required this.store, this.embedded = false, super.key});
   final AppStore store;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
     final completedCount = store.completedLevels.length;
-    final progressRatio = (completedCount / AppStore.totalLevels).clamp(0.0, 1.0);
+    final progressRatio = (completedCount / AppStore.totalLevels).clamp(
+      0.0,
+      1.0,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.getBackground(context),
@@ -1117,7 +1166,7 @@ class ProgressScreen extends StatelessWidget {
                   ArrowBoxHeaderIconButton(
                     icon: Icons.arrow_back_rounded,
                     tooltip: 'Back',
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: embedded ? () {} : () => Navigator.pop(context),
                   ),
                   Expanded(
                     child: Text(
@@ -1145,7 +1194,10 @@ class ProgressScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.getCard(context),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: AppColors.getBorder(context), width: 1.2),
+                      border: Border.all(
+                        color: AppColors.getBorder(context),
+                        width: 1.2,
+                      ),
                     ),
                     child: Column(
                       children: [
@@ -1165,8 +1217,11 @@ class ProgressScreen extends StatelessWidget {
                               Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.star_rounded,
-                                      color: AppColors.starGold, size: 36),
+                                  const Icon(
+                                    Icons.star_rounded,
+                                    color: AppColors.starGold,
+                                    size: 36,
+                                  ),
                                   const SizedBox(height: 2),
                                   Text(
                                     '$completedCount / ${AppStore.totalLevels}',
@@ -1179,7 +1234,9 @@ class ProgressScreen extends StatelessWidget {
                                   Text(
                                     'Levels Completed',
                                     style: TextStyle(
-                                      color: AppColors.getTextSecondary(context),
+                                      color: AppColors.getTextSecondary(
+                                        context,
+                                      ),
                                       fontSize: 11,
                                     ),
                                   ),
@@ -1394,21 +1451,24 @@ class HowToPlayScreen extends StatelessWidget {
                   _TutorialStepCard(
                     step: 1,
                     title: 'Each block has a direction',
-                    subtitle: 'Arrows can only move in the direction they point.',
+                    subtitle:
+                        'Arrows can only move in the direction they point.',
                     visual: _Step1Visual(),
                   ),
                   SizedBox(height: 16),
                   _TutorialStepCard(
                     step: 2,
                     title: 'Clear path to the edge',
-                    subtitle: 'An arrow escapes if there are no blocks in its path.',
+                    subtitle:
+                        'An arrow escapes if there are no blocks in its path.',
                     visual: _Step2Visual(),
                   ),
                   SizedBox(height: 16),
                   _TutorialStepCard(
                     step: 3,
                     title: 'Remove the block',
-                    subtitle: 'When an arrow escapes, it is removed from the board.',
+                    subtitle:
+                        'When an arrow escapes, it is removed from the board.',
                     visual: _Step3Visual(),
                   ),
                   SizedBox(height: 16),
@@ -1524,7 +1584,11 @@ class _Step1Visual extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 28),
+      child: const Icon(
+        Icons.arrow_upward_rounded,
+        color: Colors.white,
+        size: 28,
+      ),
     );
   }
 }
@@ -1540,7 +1604,11 @@ class _Step2Visual extends StatelessWidget {
         const SizedBox(width: 8),
         _miniEmpty(context),
         const SizedBox(width: 8),
-        const Icon(Icons.arrow_forward_rounded, color: AppColors.cyan, size: 18),
+        const Icon(
+          Icons.arrow_forward_rounded,
+          color: AppColors.cyan,
+          size: 18,
+        ),
         const SizedBox(width: 8),
         _miniTile(AppColors.arrowUpGradient, Icons.arrow_upward_rounded),
       ],
@@ -1548,24 +1616,24 @@ class _Step2Visual extends StatelessWidget {
   }
 
   Widget _miniTile(List<Color> colors, IconData icon) => Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: colors),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: Colors.white, size: 20),
-      );
+    width: 36,
+    height: 36,
+    decoration: BoxDecoration(
+      gradient: LinearGradient(colors: colors),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Icon(icon, color: Colors.white, size: 20),
+  );
 
   Widget _miniEmpty(BuildContext context) => Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: AppColors.getSecondaryBackground(context),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.getBorder(context)),
-        ),
-      );
+    width: 36,
+    height: 36,
+    decoration: BoxDecoration(
+      color: AppColors.getSecondaryBackground(context),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: AppColors.getBorder(context)),
+    ),
+  );
 }
 
 class _Step3Visual extends StatelessWidget {
@@ -1579,30 +1647,40 @@ class _Step3Visual extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: AppColors.arrowRightGradient),
+            gradient: const LinearGradient(
+              colors: AppColors.arrowRightGradient,
+            ),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+          child: const Icon(
+            Icons.arrow_forward_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
         ),
         const SizedBox(width: 8),
         _miniEmpty(context),
         const SizedBox(width: 8),
         _miniEmpty(context),
         const SizedBox(width: 8),
-        const Icon(Icons.arrow_forward_rounded, color: AppColors.warning, size: 18),
+        const Icon(
+          Icons.arrow_forward_rounded,
+          color: AppColors.warning,
+          size: 18,
+        ),
       ],
     );
   }
 
   Widget _miniEmpty(BuildContext context) => Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: AppColors.getSecondaryBackground(context),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.getBorder(context)),
-        ),
-      );
+    width: 36,
+    height: 36,
+    decoration: BoxDecoration(
+      color: AppColors.getSecondaryBackground(context),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: AppColors.getBorder(context)),
+    ),
+  );
 }
 
 class _Step4Visual extends StatelessWidget {
@@ -1658,7 +1736,7 @@ class AboutScreen extends StatelessWidget {
                     tooltip: 'Back',
                     onPressed: () => Navigator.pop(context),
                   ),
-                          Expanded(
+                  Expanded(
                     child: Text(
                       'About',
                       textAlign: TextAlign.center,
@@ -1718,7 +1796,10 @@ class AboutScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.getCard(context),
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: AppColors.getBorder(context), width: 1),
+                        border: Border.all(
+                          color: AppColors.getBorder(context),
+                          width: 1,
+                        ),
                       ),
                       child: Column(
                         children: [
@@ -1786,15 +1867,24 @@ class AboutScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: AppColors.getBorder(context)),
         ),
-        title: Text(title, style: TextStyle(color: AppColors.getTextPrimary(context))),
+        title: Text(
+          title,
+          style: TextStyle(color: AppColors.getTextPrimary(context)),
+        ),
         content: Text(
           content,
-          style: TextStyle(color: AppColors.getTextSecondary(context), height: 1.4),
+          style: TextStyle(
+            color: AppColors.getTextSecondary(context),
+            height: 1.4,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close', style: TextStyle(color: AppColors.primaryBright)),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: AppColors.primaryBright),
+            ),
           ),
         ],
       ),

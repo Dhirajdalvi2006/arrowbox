@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import 'arrowbox_logic.dart';
+import '../arrow_designs/arrow_designs.dart';
 
 Offset arrowEscapeOffset(ArrowDirection direction, double distance) {
   final (rowStep, columnStep) = direction.vector;
@@ -20,6 +20,7 @@ class GradientArrowTile extends StatefulWidget {
     required this.onTap,
     this.animationDelay = Duration.zero,
     this.escapeDistance = 280,
+    this.skin = const ClassicArrowSkin(),
     super.key,
   });
 
@@ -31,6 +32,7 @@ class GradientArrowTile extends StatefulWidget {
   final VoidCallback onTap;
   final Duration animationDelay;
   final double escapeDistance;
+  final ArrowSkin skin;
 
   @override
   State<GradientArrowTile> createState() => _GradientArrowTileState();
@@ -237,18 +239,15 @@ class _GradientArrowTileState extends State<GradientArrowTile>
                               ),
                             ),
                           ),
-                          Center(
-                            child: Icon(
-                              icon,
-                              color: Colors.white,
-                              size: 32,
-                              shadows: const [
-                                Shadow(
-                                  color: Colors.black26,
-                                  offset: Offset(0, 2),
-                                  blurRadius: 4,
-                                ),
-                              ],
+                          Positioned.fill(
+                            child: LayoutBuilder(
+                              builder: (context, constraints) =>
+                                  widget.skin.buildArrow(
+                                    direction: widget.direction,
+                                    size: constraints.biggest.shortestSide,
+                                    highlighted: widget.highlighted,
+                                    isInteractive: true,
+                                  ),
                             ),
                           ),
                         ],
@@ -267,16 +266,22 @@ class _GradientArrowTileState extends State<GradientArrowTile>
 
 /// Empty Board Cell with centered dot matching Reference 1
 class EmptyBoardCell extends StatelessWidget {
-  const EmptyBoardCell({super.key});
+  const EmptyBoardCell({this.theme, super.key});
+
+  final BoardTheme? theme;
 
   @override
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
-    final bgColor = isDark ? const Color(0xFF0A1628) : const Color(0xFFE2EAF4);
-    final borderColor = isDark
-        ? const Color(0xFF142640)
-        : const Color(0xFFD0DCED);
-    final dotColor = AppColors.getBoardDot(context).withValues(alpha: 0.4);
+    final boardTheme = theme;
+    final bgColor =
+        boardTheme?.cell ??
+        (isDark ? const Color(0xFF0A1628) : const Color(0xFFE2EAF4));
+    final borderColor =
+        boardTheme?.border ??
+        (isDark ? const Color(0xFF142640) : const Color(0xFFD0DCED));
+    final dotColor = (boardTheme?.dot ?? AppColors.getBoardDot(context))
+        .withValues(alpha: 0.4);
 
     return Container(
       decoration: BoxDecoration(
