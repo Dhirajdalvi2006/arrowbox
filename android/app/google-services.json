@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1083971733030",
+    "project_id": "arrowbox-f7fae",
+    "storage_bucket": "arrowbox-f7fae.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1083971733030:android:1b731bf945bc76710ec8e7",
+        "android_client_info": {
+          "package_name": "com.arrowbox.game"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1083971733030-nh21126hnpinup86fvarmhq39v1nb917.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGlx9ZaoMQusFgJoYlH0X8ZrE7hE0g23w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1083971733030-nh21126hnpinup86fvarmhq39v1nb917.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -15,11 +15,13 @@ import '../../app.dart';
 
 class _ArrowBoxExitRecord {
   const _ArrowBoxExitRecord({
+    required this.id,
     required this.direction,
     required this.session,
     required this.duration,
   });
 
+  final int id;
   final ArrowDirection direction;
   final int session;
   final Duration duration;
@@ -44,6 +46,7 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
   final Map<int, _ArrowBoxExitRecord> _exiting = {};
   final Stopwatch _inputClock = Stopwatch()..start();
   int _session = 0;
+  int _exitId = 0;
   bool _processingQueue = false;
   int? _shakingIndex;
   bool _busy = false;
@@ -238,15 +241,17 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
 
     if (canEscape && result.wasValid) {
       final duration = _animationTiming.durationFor(_inputClock.elapsed);
+      final exitId = ++_exitId;
       setState(() {
         _game = result.state.withSeconds(_seconds);
         _exiting[request.index] = _ArrowBoxExitRecord(
+          id: exitId,
           direction: direction,
           session: request.session,
           duration: duration,
         );
       });
-      _finishExit(request.index, request.session, duration);
+      _finishExit(request.index, exitId, request.session, duration);
     } else {
       setState(() {
         _game = result.state.withSeconds(_seconds);
@@ -271,10 +276,15 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
     }
   }
 
-  Future<void> _finishExit(int index, int session, Duration duration) async {
+  Future<void> _finishExit(
+    int index,
+    int exitId,
+    int session,
+    Duration duration,
+  ) async {
     await Future<void>.delayed(duration);
     if (!mounted || session != _session) return;
-    if (_exiting[index]?.session != session) return;
+    if (_exiting[index]?.id != exitId) return;
     setState(() => _exiting.remove(index));
   }
 

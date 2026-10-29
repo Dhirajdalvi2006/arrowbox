@@ -1,12 +1,32 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:meta/meta.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/arrowbox/arrowbox_logic.dart';
 import '../features/arrow_designs/arrow_designs.dart';
 
 class AppStore extends ChangeNotifier {
+  @visibleForTesting
+  AppStore.forTesting(this._prefs)
+    : unlockedLevel = _validLevel(_prefs.getInt('unlockedLevel')),
+      completedLevels = _validCompletedLevels(
+        _prefs.getStringList('completedLevels'),
+      ),
+      levelStars = _validLevelStars(_prefs.getStringList('levelStars')),
+      gamesPlayed = _nonNegative(_prefs.getInt('gamesPlayed')),
+      totalMistakes = _nonNegative(_prefs.getInt('totalMistakes')),
+      soundEnabled = _prefs.getBool('soundEnabled') ?? true,
+      musicEnabled = _prefs.getBool('musicEnabled') ?? true,
+      musicVolume = _prefs.getDouble('musicVolume') ?? 0.7,
+      hapticsEnabled = _prefs.getBool('hapticsEnabled') ?? true,
+      hintsEnabled = _prefs.getBool('hintsEnabled') ?? true,
+      confirmRestart = _prefs.getBool('confirmRestart') ?? true,
+      themeMode = _validThemeMode(_prefs.getInt('themeMode')),
+      arrowSkinId = _validSkinId(_prefs.getString('arrowSkinId')),
+      boardThemeId = _validBoardThemeId(_prefs.getString('boardThemeId'));
+
   AppStore._(this._prefs)
     : unlockedLevel = _validLevel(_prefs.getInt('unlockedLevel')),
       completedLevels = _validCompletedLevels(
