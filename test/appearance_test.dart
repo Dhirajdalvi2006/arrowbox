@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:locate/app.dart';
 import 'package:locate/core/app_store.dart';
+import 'package:locate/core/widgets/arrowbox_widgets.dart';
 import 'package:locate/features/arrow_designs/arrow_designs.dart';
+
 import 'package:locate/features/arrow_lab/arrow_lab_screen.dart';
 import 'package:locate/features/arrowbox/arrowbox_board_widgets.dart';
 import 'package:locate/features/arrowbox/arrowbox_logic.dart';
@@ -54,6 +57,29 @@ void main() {
     expect(find.text('Settings'), findsOneWidget);
   });
 
+  testWidgets('settings stays usable when Firebase is not initialized', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final store = await AppStore.load();
+    final errors = <Object>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SettingsScreen(store: store),
+      ),
+    );
+    await tester.pump();
+
+    final thrown = tester.takeException();
+    if (thrown != null) errors.add(thrown);
+
+    expect(errors, isEmpty);
+    expect(find.text('Settings'), findsOneWidget);
+    // Should NOT show auth buttons since Firebase is not available
+    expect(find.text('Continue with Google'), findsNothing);
+  });
+
   testWidgets('gameplay route has no floating navigation', (tester) async {
     final store = await AppStore.load();
     await tester.pumpWidget(
@@ -85,5 +111,20 @@ void main() {
     for (final theme in BoardThemeRegistry.all) {
       expect(find.text(theme.name, skipOffstage: false), findsWidgets);
     }
+  });
+
+  testWidgets('WelcomeScreen has correct hero logo and action cards', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final store = await AppStore.load();
+    await tester.pumpWidget(MaterialApp(home: WelcomeScreen(store: store)));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ArrowBoxHeroArtwork), findsOneWidget);
+    // The logo in the top bar still exists
+    expect(find.byType(ArrowBoxLogoMark), findsWidgets);
+
+    expect(find.text('Progress'), findsNothing);
+    expect(find.text('About'), findsNothing);
+    expect(find.text('How to Play'), findsNothing);
   });
 }

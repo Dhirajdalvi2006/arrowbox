@@ -50,8 +50,11 @@ void main() {
         final difficulty = LevelCatalog.difficultyFor(levelNumber);
         if (levelNumber <= 100) {
           expect(difficulty, ArrowBoxDifficulty.easy);
-          if (levelNumber == 1) expect(arrowCount, 8);
-          else expect(arrowCount, inInclusiveRange(8, 20));
+          if (levelNumber == 1) {
+            expect(arrowCount, 8);
+          } else {
+            expect(arrowCount, inInclusiveRange(8, 20));
+          }
         } else if (levelNumber <= 200) {
           expect(difficulty, ArrowBoxDifficulty.medium);
           expect(arrowCount, inInclusiveRange(16, 23));

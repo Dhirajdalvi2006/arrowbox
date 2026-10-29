@@ -3,9 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:locate/features/arrow_designs/arrow_designs.dart';
 
 void main() {
-  test('registry contains eight unique styles in reference order', () {
-    expect(ArrowSkinRegistry.all, hasLength(8));
-    expect(ArrowSkinRegistry.all.map((skin) => skin.id).toSet(), hasLength(8));
+  test('registry contains eleven unique styles in reference order', () {
+    expect(ArrowSkinRegistry.all, hasLength(11));
+    expect(ArrowSkinRegistry.all.map((skin) => skin.id).toSet(), hasLength(11));
     expect(ArrowSkinRegistry.all.map((skin) => skin.id), ArrowSkinId.values);
   });
 

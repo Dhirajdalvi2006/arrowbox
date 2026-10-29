@@ -6,7 +6,6 @@ import 'package:locate/core/app_store.dart';
 import 'package:locate/features/arrowbox/arrowbox_board_widgets.dart';
 import 'package:locate/features/arrowbox/arrowbox_screen.dart';
 import 'package:locate/features/arrowbox/arrowbox_logic.dart';
-import 'package:locate/features/arrow_designs/arrow_designs.dart';
 
 // Robust Fake for testing serialization and failures
 class AuditFakePrefs implements SharedPreferences {
@@ -159,6 +158,7 @@ void main() {
     testWidgets('animation ID prevents premature removal after undo and re-tap', (tester) async {
       // Build ArrowBoxScreen
       final game = ArrowBoxState.initial(level: 1);
+      await tester.binding.setSurfaceSize(const Size(1024, 768));
       await tester.pumpWidget(MaterialApp(
         home: ArrowBoxScreen(
           store: store,

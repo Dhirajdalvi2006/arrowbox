@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'app.dart';
 import 'core/app_store.dart';
 import 'core/theme/app_colors.dart';
-import 'core/widgets/arrowbox_widgets.dart';
+import 'features/splash/splash_animations.dart';
+import 'features/splash/splash_screen_widgets.dart';
 
 class ArrowBoxStartup extends StatefulWidget {
-  const ArrowBoxStartup({required this.storeLoader, super.key});
+  const ArrowBoxStartup({
+    required this.storeLoader,
+    this.firebaseInitializer,
+    super.key,
+  });
 
   final Future<AppStore> Function() storeLoader;
+  final Future<void> Function()? firebaseInitializer;
 
   @override
   State<ArrowBoxStartup> createState() => _ArrowBoxStartupState();
@@ -36,6 +43,15 @@ class _ArrowBoxStartupState extends State<ArrowBoxStartup>
   }
 
   Future<AppStore> _loadStore() async {
+    try {
+      if (widget.firebaseInitializer != null) {
+        await widget.firebaseInitializer!();
+      } else {
+        await Firebase.initializeApp();
+      }
+    } catch (e) {
+      debugPrint('Firebase initialization failed: $e');
+    }
     return widget.storeLoader();
   }
 
@@ -83,66 +99,139 @@ class _ReadyApp extends StatelessWidget {
   }
 }
 
-class _StartupSplash extends StatelessWidget {
+class _StartupSplash extends StatefulWidget {
   const _StartupSplash({required this.animation});
 
   final Animation<double> animation;
 
   @override
-  Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    final entrance = reduceMotion
-        ? const AlwaysStoppedAnimation(1.0)
-        : CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+  State<_StartupSplash> createState() => _StartupSplashState();
+}
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF070D1A),
-      body: Center(
-        child: FadeTransition(
-          opacity: entrance,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.88, end: 1).animate(entrance),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const ArrowBoxLogoMark(size: 112),
-                const SizedBox(height: 24),
-                const Text(
-                  'ArrowBox',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 30,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.6,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Preparing your game',
-                  style: TextStyle(
-                    color: AppColors.cyan,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                const SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: AppColors.primaryBright,
-                    backgroundColor: Color(0x3321D4FD),
-                  ),
-                ),
-              ],
+class _StartupSplashState extends State<_StartupSplash> {
+  late Animation<double> _entrance;
+
+  @override
+  void initState() {
+    super.initState();
+    _entrance = SplashAnimations.createEntranceAnimation(widget.animation as AnimationController);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _entrance,
+      child: Scaffold(
+        backgroundColor: const Color(0xFF070D1A),
+        body: Stack(
+          children: [
+            // Background Grid
+            Positioned.fill(
+              child: CustomPaint(painter: _GridPainter()),
             ),
-          ),
+            // Floating Tiles
+            Center(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const SplashArrowTile(
+                    icon: Icons.arrow_upward_rounded,
+                    size: 48,
+                    position: Offset(-80, -80),
+                    rotation: 0.1,
+                  ),
+                  const SplashArrowTile(
+                    icon: Icons.arrow_forward_rounded,
+                    size: 48,
+                    position: Offset(80, 80),
+                    rotation: -0.2,
+                  ),
+                  // Central Logo
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0A1628),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: AppColors.primaryBright.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.arrow_upward_rounded,
+                        color: AppColors.cyan,
+                        size: 72,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // App Name, Tagline, Progress
+            Positioned(
+              bottom: 60,
+              left: 20,
+              right: 20,
+              child: Column(
+                children: [
+                  const Text(
+                    'ArrowBox',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Escape the grid. Master the puzzle.',
+                    style: TextStyle(color: Color(0xFF71839B), fontSize: 14),
+                  ),
+                  const SizedBox(height: 32),
+                  Container(
+                    width: 200,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0A1628),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    child: const LinearProgressIndicator(
+                      color: AppColors.cyan,
+                      backgroundColor: Colors.transparent,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Preparing your puzzle...',
+                    style: TextStyle(color: Color(0xFF71839B), fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _GridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.primaryBright.withValues(alpha: 0.05)
+      ..strokeWidth = 1;
+    for (double i = 0; i < size.width; i += 40) {
+      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
+    }
+    for (double i = 0; i < size.height; i += 40) {
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _StartupFailure extends StatelessWidget {

@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'core/app_store.dart';
+import 'core/services/auth_service.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/arrowbox_widgets.dart';
@@ -11,6 +13,7 @@ import 'features/arrowbox/arrowbox_dialogs.dart';
 import 'features/arrowbox/arrowbox_logic.dart';
 import 'features/arrowbox/arrowbox_screen.dart';
 import 'features/arrowbox/levels/level_catalog.dart';
+import 'features/auth/login_profile_button.dart';
 import 'features/shell/app_shell.dart';
 
 class ArrowBoxApp extends StatelessWidget {
@@ -165,17 +168,7 @@ class WelcomeScreen extends StatelessWidget {
                             },
                           ),
                           SizedBox(width: compact ? 4 : 8),
-                          ArrowBoxHeaderIconButton(
-                            size: controlSize,
-                            icon: Icons.settings_rounded,
-                            tooltip: 'Settings',
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => SettingsScreen(store: store),
-                              ),
-                            ),
-                          ),
+                          const LoginProfileButton(),
                         ],
                       ),
                     ],
@@ -185,16 +178,8 @@ class WelcomeScreen extends StatelessWidget {
 
               const SizedBox(height: 14),
 
-              // Central app logo
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final logoSize = (constraints.maxWidth * 0.48).clamp(
-                    128.0,
-                    180.0,
-                  );
-                  return Center(child: ArrowBoxLogoMark(size: logoSize));
-                },
-              ),
+              // Central hero artwork
+              const ArrowBoxHeroArtwork(size: 200),
 
               const SizedBox(height: 18),
 
@@ -268,47 +253,6 @@ class WelcomeScreen extends StatelessWidget {
               ],
 
               const SizedBox(height: 24),
-
-              // Bottom 3 Action Cards (Progress, How to Play, About)
-              Row(
-                children: [
-                  ArrowBoxActionCard(
-                    icon: Icons.bar_chart_rounded,
-                    title: 'Progress',
-                    subtitle:
-                        '${store.completedLevels.length} / ${AppStore.totalLevels} levels',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ProgressScreen(store: store),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ArrowBoxActionCard(
-                    icon: Icons.menu_book_rounded,
-                    title: 'How to Play',
-                    subtitle: 'Learn the rules',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const HowToPlayScreen(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ArrowBoxActionCard(
-                    icon: Icons.info_outline_rounded,
-                    title: 'About',
-                    subtitle: 'Game info',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AboutScreen()),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
               const SizedBox(height: 96),
             ],
           ),
@@ -746,13 +690,67 @@ class _LevelTile extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // 7. SETTINGS SCREEN (Reference Screen 7)
 // ---------------------------------------------------------------------------
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({required this.store, this.embedded = false, super.key});
   final AppStore store;
   final bool embedded;
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isAuthLoading = false;
+  String? _authError;
+
+  Future<void> _handleSignIn() async {
+    if (_isAuthLoading) return;
+    setState(() {
+      _isAuthLoading = true;
+      _authError = null;
+    });
+    try {
+      final result = await AuthService.instance.signInWithGoogle();
+      if (result == null && mounted) {
+        // User cancelled
+        setState(() => _isAuthLoading = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _authError = 'Sign-in failed. Please try again.';
+          _isAuthLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleSignOut() async {
+    if (_isAuthLoading) return;
+    setState(() {
+      _isAuthLoading = true;
+      _authError = null;
+    });
+    try {
+      await AuthService.instance.signOut();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _authError = 'Sign-out failed.';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isAuthLoading = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final store = widget.store;
+    final embedded = widget.embedded;
+
     return Scaffold(
       backgroundColor: AppColors.getBackground(context),
       body: SafeArea(
@@ -788,6 +786,125 @@ class SettingsScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
                 children: [
+                  // ACCOUNT SECTION
+                  if (AuthService.instance.isAvailable) ...[
+                    const _SettingsSectionHeader(title: 'ACCOUNT'),
+                    StreamBuilder<User?>(
+                      stream: AuthService.instance.authStateChanges,
+                      builder: (context, snapshot) {
+                        final user = snapshot.data;
+                        final isSignedIn = user != null;
+
+                        return _SettingsContainer(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                children: [
+                                  if (isSignedIn) ...[
+                                    Row(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 24,
+                                          backgroundColor: AppColors.getBorder(context),
+                                          backgroundImage: user.photoURL != null
+                                              ? NetworkImage(user.photoURL!)
+                                              : null,
+                                        child: user.photoURL == null
+                                            ? const Icon(Icons.person, color: AppColors.primaryBright)
+                                            : null,
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              user.displayName ?? 'Signed In',
+                                              style: TextStyle(
+                                                color: AppColors.getTextPrimary(context),
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            if (user.email != null)
+                                              Text(
+                                                user.email!,
+                                                style: TextStyle(
+                                                  color: AppColors.getTextSecondary(context),
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ArrowBoxSecondaryButton(
+                                      label: _isAuthLoading ? 'Signing Out...' : 'Sign Out',
+                                      icon: Icons.logout_rounded,
+                                      onPressed: _isAuthLoading ? () {} : _handleSignOut,
+                                    ),
+                                  ),
+                                ] else ...[
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.account_circle_outlined, color: AppColors.primaryBright, size: 28),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Your Account',
+                                              style: TextStyle(
+                                                color: AppColors.getTextPrimary(context),
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            Text(
+                                              'Sign in to connect your Google account.',
+                                              style: TextStyle(
+                                                color: AppColors.getTextSecondary(context),
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  if (_authError != null) ...[
+                                    Text(
+                                      _authError!,
+                                      style: const TextStyle(color: AppColors.error, fontSize: 12),
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ArrowBoxPrimaryButton(
+                                      label: _isAuthLoading ? 'Signing In...' : 'Continue with Google',
+                                      icon: Icons.login_rounded,
+                                      onPressed: _isAuthLoading ? () {} : _handleSignIn,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 22),
+                ],
+
                   // GAMEPLAY SECTION
                   const _SettingsSectionHeader(title: 'GAMEPLAY'),
                   _SettingsContainer(

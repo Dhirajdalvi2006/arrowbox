@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:meta/meta.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/arrowbox/arrowbox_logic.dart';
@@ -318,30 +317,32 @@ class AppStore extends ChangeNotifier {
     });
   }
 
-  Future<void> resetSettings() async {
-    soundEnabled = true;
-    musicEnabled = true;
-    musicVolume = 0.7;
-    hapticsEnabled = true;
-    hintsEnabled = true;
-    confirmRestart = true;
-    themeMode = ThemeMode.dark;
-    arrowSkinId = ArrowSkinId.classic;
-    boardThemeId = BoardThemeId.midnight;
-    for (final key in [
-      'soundEnabled',
-      'musicEnabled',
-      'musicVolume',
-      'hapticsEnabled',
-      'hintsEnabled',
-      'confirmRestart',
-      'arrowSkinId',
-      'boardThemeId',
-    ]) {
-      await _prefs.remove(key);
-    }
-    await _prefs.remove('themeMode');
-    notifyListeners();
+  Future<void> resetSettings() {
+    return _enqueueWrite(() async {
+      soundEnabled = true;
+      musicEnabled = true;
+      musicVolume = 0.7;
+      hapticsEnabled = true;
+      hintsEnabled = true;
+      confirmRestart = true;
+      themeMode = ThemeMode.dark;
+      arrowSkinId = ArrowSkinId.classic;
+      boardThemeId = BoardThemeId.midnight;
+      for (final key in [
+        'soundEnabled',
+        'musicEnabled',
+        'musicVolume',
+        'hapticsEnabled',
+        'hintsEnabled',
+        'confirmRestart',
+        'arrowSkinId',
+        'boardThemeId',
+      ]) {
+        await _prefs.remove(key);
+      }
+      await _prefs.remove('themeMode');
+      notifyListeners();
+    });
   }
 
   Future<void> _persistProgress() async {

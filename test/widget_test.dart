@@ -28,10 +28,13 @@ void main() {
   ) async {
     final pending = Completer<AppStore>();
 
-    await tester.pumpWidget(ArrowBoxStartup(storeLoader: () => pending.future));
+    await tester.pumpWidget(ArrowBoxStartup(
+      storeLoader: () => pending.future,
+      firebaseInitializer: () async {},
+    ));
     await tester.pump();
 
-    expect(find.text('Preparing your game'), findsOneWidget);
+    expect(find.text('Preparing your puzzle...'), findsOneWidget);
     expect(find.text('Play Now'), findsNothing);
   });
 
@@ -47,6 +50,7 @@ void main() {
           loadCount++;
           return store;
         },
+        firebaseInitializer: () async {},
       ),
     );
     await tester.pump();
@@ -64,6 +68,7 @@ void main() {
         storeLoader: () {
           throw StateError('sync load failed');
         },
+        firebaseInitializer: () async {},
       ),
     );
     await tester.pumpAndSettle();
@@ -86,6 +91,7 @@ void main() {
           loadCount++;
           return loadCount == 1 ? first.future : second.future;
         },
+        firebaseInitializer: () async {},
       ),
     );
     await tester.pump();

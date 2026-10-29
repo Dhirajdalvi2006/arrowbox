@@ -8,6 +8,9 @@ import '../models/arrow_skin_id.dart';
 import '../neon/neon_arrow_skin.dart';
 import '../pastel/pastel_arrow_skin.dart';
 import '../tech/tech_arrow_skin.dart';
+import '../cyber/cyber_arrow_skin.dart';
+import '../void_style/void_arrow_skin.dart';
+import '../aurora/aurora_arrow_skin.dart';
 
 class ArrowSkinRegistry {
   const ArrowSkinRegistry._();
@@ -21,6 +24,9 @@ class ArrowSkinRegistry {
     PastelArrowSkin(),
     TechArrowSkin(),
     FantasyArrowSkin(),
+    CyberArrowSkin(),
+    VoidArrowSkin(),
+    AuroraArrowSkin(),
   ];
 
   static ArrowSkin byId(ArrowSkinId id) =>
