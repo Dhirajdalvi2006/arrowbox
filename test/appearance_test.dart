@@ -39,19 +39,17 @@ void main() {
   );
 
   testWidgets('shell switches between all destinations', (tester) async {
+    SharedPreferences.setMockInitialValues({});
     final store = await AppStore.load();
     await tester.pumpWidget(MaterialApp(home: AppShell(store: store)));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
 
-    for (final label in [
-      'home',
-      'levels',
-      'arrow lab',
-      'progress',
-      'settings',
-    ]) {
-      await tester.tap(find.text(label));
-      await tester.pumpAndSettle();
+    final nav = find.byType(FloatingBottomNav);
+    for (var index = 0; index < 5; index++) {
+      await tester.tap(
+        find.descendant(of: nav, matching: find.byType(Icon)).at(index),
+      );
+      await tester.pump(const Duration(milliseconds: 250));
     }
     expect(find.text('Settings'), findsOneWidget);
   });
@@ -66,7 +64,7 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 450));
     expect(find.byType(FloatingBottomNav), findsNothing);
     expect(find.byType(GradientArrowTile), findsWidgets);
   });

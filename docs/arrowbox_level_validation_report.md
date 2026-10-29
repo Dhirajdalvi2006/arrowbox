@@ -2,69 +2,85 @@
 
 Generated: 2026-10-28
 
-## Result
+## Current result
 
-The requested catalog-wide audit could not complete within the available execution window. The standalone validator uses the production generators, solver, and `arrowCanEscape` rule and does not launch `flutter_tester.exe`. Both the original exhaustive pass and the optimized one-pass run exceeded the 600-second execution limit before writing a report.
+The generator now exposes structured outcomes and the standalone validator supports bounded range validation with atomic checkpoint/resume. Difficulty thresholds were not changed.
 
-The audit therefore does **not** claim complete 500-level statistics. It does establish production generation failures at the following levels through direct standalone probes:
+A complete 500-level validation is still incomplete. The standalone validator and the catalog-wide Flutter generation test both exceed the available execution budget before all levels finish. No incomplete or budget-exhausted level is reported as passed.
 
-| Level | Band | Result | Runtime |
-|---:|---|---|---:|
-| 200 | Medium | `StateError: Unable to generate solvable board for seed 1583901` | 7,838 ms |
-| 350 | Hard | `StateError: Unable to generate solvable board for seed 2771861` | 15,708 ms |
-| 351 | Ultra Hard | `StateError: Unable to generate solvable board for seed 2779876` | 14,594 ms |
+## Structured generation outcomes
 
-Each failure occurs after the production generator's bounded 10,000-attempt search. These are invalid generation results, not solver inconclusive results.
+`BoardGenerationStatus` distinguishes:
 
-## Representative successful probes
+- `SUCCESS`: generation completed and final verification returned a valid board.
+- `UNSOLVABLE`: reserved for a conclusive proof that no valid solution exists.
+- `BUDGET_EXHAUSTED`: the configured attempt or node budget ended before success.
+- `INVALID_CONFIGURATION`: invalid arrow-count, constraint, or budget configuration.
 
-| Band | Level | Arrows | Runtime |
-|---|---:|---:|---:|
-| Easy | 1 | 8 | 22 ms |
-| Easy | 50 | 15 | 12 ms |
-| Easy | 100 | 20 | 13 ms |
-| Medium | 101 | 16 | 28 ms |
-| Medium | 150 | 19 | 3 ms |
-| Hard | 201 | 20 | 341 ms |
-| Hard | 275 | 22 | 2,764 ms |
-| Ultra Hard | 425 | 25 | 2,398 ms |
-| Ultra Hard | 500 | 25 | 6,917 ms |
+The existing list-returning production API remains available for gameplay callers. The new outcome API carries status, board, reason, level, difficulty, and `BoardGenerationStats` including attempts, nodes, backtracks, solver calls, rejection counters, and elapsed time.
 
-These probes are not a substitute for catalog-wide statistics. They demonstrate that some levels are fast while others consume seconds or exhaust the generation bound.
+## Resumable validator
 
-## Intended bands checked by the harness
+New tool: `tool/resume_arrowbox_catalog.dart`
 
-- Levels 1–100: Easy.
-- Levels 101–200: Medium.
-- Levels 201–350: Hard.
-- Levels 351–500: Ultra Hard.
+Supported options:
 
-The harness checks board size, arrow-count profile, direction balance, solver result, production-rule solution replay, duplicate layouts, and deterministic regeneration at selected band boundaries. It records generator exceptions as invalid and solver `null` results as inconclusive; it does not treat search exhaustion as proof of unsolvability.
+- `--start=N`
+- `--end=N`
+- `--checkpoint=PATH`
+- `--maxAttempts=N`
+- `--maxNodes=N`
 
-## Current profile observations
+Checkpoint behavior:
 
-- Easy uses a gradual density curve from 8 to 20 arrows.
-- Medium targets 16–23 arrows.
-- Hard targets 20–25 arrows.
-- Ultra Hard targets exactly 25 arrows.
-- Hard and Ultra Hard require at least three arrows in every direction.
-- Ultra Hard has not been demonstrated to be measurably harder than Hard by the current solver metrics.
-- Earlier measured samples reported lower average dependency depth and forced-move ratio for Ultra Hard than Hard. Those values are not re-presented as a complete current-catalog result.
+- Writes after every level using a temporary file and rename.
+- Stores schema version, exact range, configuration fingerprint, status, diagnostics, and successful layout keys.
+- Skips only existing `SUCCESS` entries.
+- Retries `BUDGET_EXHAUSTED`, `UNSOLVABLE`, and `INVALID_CONFIGURATION` entries.
+- Rejects incompatible configuration/range and out-of-range checkpoint entries.
+- Reports `complete=false` and exits non-zero when any requested level is incomplete.
 
-## Limitations
+Verified small-range runs:
 
-1. The production generator does not expose the exact attempt count used for successful generations.
-2. `LevelSolver.analyze` returns `null` for both unsolvable boards and search exhaustion, so a `null` result cannot be classified as proven unsolvable.
-3. The solver returns the first successful DFS path rather than an optimized solution; dependency depth and forced-move ratio are path-dependent.
-4. The catalog initializer eagerly generates all 500 levels, so the validator intentionally calls the production mode generators directly to avoid unrelated eager initialization.
-5. The validator writes its report only after all levels finish. The full run produced no partial report before the execution limit.
-6. Flutter tests could not execute because Windows Application Control blocked `flutter_tester.exe`; that policy was not bypassed.
+- Range 1–2 with `maxAttempts=1`, `maxNodes=1`: both recorded `BUDGET_EXHAUSTED`; run incomplete.
+- Range 1–2 with normal budgets: both recorded `SUCCESS`; run complete.
+- Outcome/checkpoint tests: 2 passed.
 
-## Validation status
+## Performance diagnostics
 
-- Complete 500-level generation audit: **incomplete due to runtime limit**.
-- Proven generation failures: **3 representative levels** — 200, 350, and 351.
-- Proven unsolvable levels: **none established by this audit**.
-- Inconclusive solver results: **not available catalog-wide because the audit did not finish**.
-- Ultra Hard measurably harder than Hard: **not established**.
-- Production difficulty rules changed for this audit: **no**.
+Latest bounded diagnostics for the previously problematic levels:
+
+| Level | Band | Status | Attempts | Nodes | Latest observed runtime |
+|---:|---|---|---:|---:|---:|
+| 200 | Medium | Generated | 7 | 336,954 | ~2.4 s |
+| 350 | Hard | Generated | 41 | 2,032,815 | ~14.3 s |
+| 351 | Ultra Hard | Generated | 8 | 362,862 | ~2.6 s |
+
+Hard 350 remains the outlier. Instrumentation indicates construction/backtracking dominates; solver verification is invoked only after candidate construction reaches a leaf and is not the primary cost in the latest probe.
+
+## Validation commands
+
+Passed:
+
+- `flutter test test/appearance_test.dart` — 4 passed.
+- `flutter test test/board_generation_outcome_test.dart` — 2 passed.
+- `dart analyze` — no issues.
+- `flutter analyze` — no issues.
+- `flutter build apk --debug` — succeeded; APK built in approximately 28.6 seconds.
+- `git diff --check` — passed with only CRLF conversion warnings.
+- Small-range checkpoint validation — completed successfully for levels 1–2.
+
+Incomplete:
+
+- `flutter test test/level_generation_test.dart` reached the catalog-wide replay test and exceeded 600 seconds without a reported assertion failure.
+- Full standalone 500-level validation remains incomplete and must be resumed through the checkpoint validator.
+
+## Difficulty separation
+
+Hard and Ultra Hard are not yet proven measurably distinct across the complete catalog. No stronger Ultra Hard thresholds were introduced.
+
+## Remaining gaps
+
+- Complete the 1–500 checkpointed validation.
+- Produce catalog-wide duplicate, determinism, solvability, and difficulty statistics from completed checkpoint entries.
+- Add a conclusive solver result type if the project later needs to distinguish proven unsolvability from search exhaustion internally.

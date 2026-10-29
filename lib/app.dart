@@ -10,6 +10,7 @@ import 'core/widgets/arrowbox_widgets.dart';
 import 'features/arrowbox/arrowbox_dialogs.dart';
 import 'features/arrowbox/arrowbox_logic.dart';
 import 'features/arrowbox/arrowbox_screen.dart';
+import 'features/arrowbox/levels/level_catalog.dart';
 import 'features/shell/app_shell.dart';
 
 class ArrowBoxApp extends StatelessWidget {
@@ -405,7 +406,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
         ) {
           final matchesQuery =
               query.isEmpty || level.toString().contains(query);
-          final difficulty = ArrowBoxLevel.forNumber(level).difficulty;
+          final difficulty = LevelCatalog.difficultyFor(level);
           return matchesQuery &&
               (_difficultyFilter == null || difficulty == _difficultyFilter);
         }).toList();
@@ -586,7 +587,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                   final isCurrent =
                       level == store.unlockedLevel && !isCompleted;
                   final isLocked = level > store.unlockedLevel;
-                  final difficulty = ArrowBoxLevel.forNumber(level).difficulty;
+                  final difficulty = LevelCatalog.difficultyFor(level);
 
                   return Semantics(
                     label:

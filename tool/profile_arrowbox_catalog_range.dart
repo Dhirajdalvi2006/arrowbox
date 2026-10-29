@@ -32,7 +32,11 @@ void main(List<String> args) {
         'attempts=${stats.attempts} nodes=${stats.nodesExpanded} '
         'backtracks=${stats.backtracks} solvers=${stats.solverInvocations} '
         'initialRejects=${stats.initialChoiceRejections} '
-        'dependencyRejects=${stats.dependencyRejections}',
+        'dependencyRejects=${stats.dependencyRejections} '
+        'solverMs=${stats.solverElapsedMicroseconds / 1000} '
+        'solverMisses=${stats.solverCacheMisses} '
+        'solverHits=${stats.solverCacheHits} '
+        'solverStates=${stats.solverStatesVisited}',
       );
       if (duplicate) exitCode = 2;
     } catch (error) {
@@ -41,7 +45,11 @@ void main(List<String> args) {
         'attempts=${stats.attempts} nodes=${stats.nodesExpanded} '
         'backtracks=${stats.backtracks} solvers=${stats.solverInvocations} '
         'initialRejects=${stats.initialChoiceRejections} '
-        'dependencyRejects=${stats.dependencyRejections}',
+        'dependencyRejects=${stats.dependencyRejections} '
+        'solverMs=${stats.solverElapsedMicroseconds / 1000} '
+        'solverMisses=${stats.solverCacheMisses} '
+        'solverHits=${stats.solverCacheHits} '
+        'solverStates=${stats.solverStatesVisited}',
       );
       exitCode = 2;
       break;

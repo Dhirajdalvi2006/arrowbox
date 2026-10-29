@@ -4,6 +4,33 @@ import '../arrowbox_logic.dart';
 import 'arrow_board_rules.dart';
 import 'level_solver.dart';
 
+enum BoardGenerationStatus {
+  success,
+  unsolvable,
+  budgetExhausted,
+  invalidConfiguration,
+}
+
+class BoardGenerationResult {
+  const BoardGenerationResult({
+    required this.status,
+    required this.board,
+    required this.stats,
+    required this.reason,
+    this.level,
+    this.difficulty,
+  });
+
+  final BoardGenerationStatus status;
+  final List<ArrowDirection?>? board;
+  final BoardGenerationStats stats;
+  final String reason;
+  final int? level;
+  final String? difficulty;
+
+  bool get isSuccess => status == BoardGenerationStatus.success;
+}
+
 class BoardGenerationStats {
   int attempts = 0;
   int nodesExpanded = 0;
@@ -20,6 +47,83 @@ class BoardGenerationStats {
   int directionRejections = 0;
   int maxDepth = 0;
   int elapsedMilliseconds = 0;
+  int solverCacheHits = 0;
+  int solverCacheMisses = 0;
+  int solverStatesVisited = 0;
+  int solverRepeatedStates = 0;
+  int solverChoiceScans = 0;
+  int solverBoardCopies = 0;
+  int solverElapsedMicroseconds = 0;
+}
+
+BoardGenerationResult generateSolvableBoardOutcome({
+  required int arrowCount,
+  required int seed,
+  required int minimumInitialChoices,
+  required int maximumInitialChoices,
+  required int minimumDependencyDepth,
+  int minimumDirectionCount = 0,
+  double minimumForcedMoveRatio = 0,
+  Set<String> excludedLayouts = const {},
+  BoardGenerationStats? stats,
+  int maxAttempts = 10000,
+  int maxNodesPerAttempt = 50000,
+  int? level,
+  String? difficulty,
+}) {
+  final resultStats = stats ?? BoardGenerationStats();
+  if (arrowCount < 1 ||
+      arrowCount > 25 ||
+      minimumInitialChoices < 0 ||
+      maximumInitialChoices < minimumInitialChoices ||
+      minimumDependencyDepth < 0 ||
+      minimumDirectionCount < 0 ||
+      minimumDirectionCount > arrowCount ||
+      minimumForcedMoveRatio < 0 ||
+      minimumForcedMoveRatio > 1 ||
+      maxAttempts < 1 ||
+      maxNodesPerAttempt < 1) {
+    return BoardGenerationResult(
+      status: BoardGenerationStatus.invalidConfiguration,
+      board: null,
+      stats: resultStats,
+      reason: 'Generation constraints or budgets are invalid',
+      level: level,
+      difficulty: difficulty,
+    );
+  }
+  try {
+    final board = generateSolvableBoard(
+      arrowCount: arrowCount,
+      seed: seed,
+      minimumInitialChoices: minimumInitialChoices,
+      maximumInitialChoices: maximumInitialChoices,
+      minimumDependencyDepth: minimumDependencyDepth,
+      minimumDirectionCount: minimumDirectionCount,
+      minimumForcedMoveRatio: minimumForcedMoveRatio,
+      excludedLayouts: excludedLayouts,
+      stats: resultStats,
+      maxAttempts: maxAttempts,
+      maxNodesPerAttempt: maxNodesPerAttempt,
+    );
+    return BoardGenerationResult(
+      status: BoardGenerationStatus.success,
+      board: board,
+      stats: resultStats,
+      reason: 'Generated and verified successfully',
+      level: level,
+      difficulty: difficulty,
+    );
+  } on StateError catch (error) {
+    return BoardGenerationResult(
+      status: BoardGenerationStatus.budgetExhausted,
+      board: null,
+      stats: resultStats,
+      reason: error.message,
+      level: level,
+      difficulty: difficulty,
+    );
+  }
 }
 
 List<ArrowDirection?> generateSolvableBoard({
@@ -38,7 +142,6 @@ List<ArrowDirection?> generateSolvableBoard({
   final stopwatch = Stopwatch()..start();
   for (var attempt = 0; attempt < maxAttempts; attempt++) {
     stats?.attempts++;
-    final rng = Random(seed + attempt);
     final board = List<ArrowDirection?>.filled(25, null);
     final directionCounts = List<int>.filled(ArrowDirection.values.length, 0);
     final failedStates = <String>{};
@@ -61,7 +164,21 @@ List<ArrowDirection?> generateSolvableBoard({
           return false;
         }
         stats?.solverInvocations++;
-        final metrics = LevelSolver.analyze(board);
+        final solverDiagnostics = SolverDiagnostics();
+        final metrics = LevelSolver.analyze(
+          board,
+          diagnostics: solverDiagnostics,
+        );
+        if (stats != null) {
+          stats.solverCacheHits += solverDiagnostics.cacheHits;
+          stats.solverCacheMisses += solverDiagnostics.cacheMisses;
+          stats.solverStatesVisited += solverDiagnostics.statesVisited;
+          stats.solverRepeatedStates += solverDiagnostics.repeatedStates;
+          stats.solverChoiceScans += solverDiagnostics.choiceScans;
+          stats.solverBoardCopies += solverDiagnostics.boardCopies;
+          stats.solverElapsedMicroseconds +=
+              solverDiagnostics.elapsedMicroseconds;
+        }
         if (metrics == null) {
           stats?.solverInconclusive++;
           return false;
@@ -125,17 +242,19 @@ List<ArrowDirection?> generateSolvableBoard({
         board[choice.$1] = choice.$2;
         var blocked = 0;
         for (var index = 0; index < 25; index++) {
-          if (index != choice.$1 && board[index] != null &&
+          if (index != choice.$1 &&
+              board[index] != null &&
               !arrowCanEscape(board, index)) {
             blocked++;
           }
         }
         final directionNeed =
             directionCounts[choice.$2.index] < minimumDirectionCount ? 1 : 0;
-        ranked.add((choice.$1, choice.$2, blocked * 10 + directionNeed));
+        final score = blocked * 10 + directionNeed;
+        ranked.add((choice.$1, choice.$2, score));
         board[choice.$1] = null;
       }
-      ranked.shuffle(rng);
+      ranked.shuffle(Random(seed + attempt + placed));
       ranked.sort((a, b) => b.$3.compareTo(a.$3));
       final branchCount = min(4, ranked.length);
       for (var branch = 0; branch < branchCount; branch++) {
@@ -153,7 +272,9 @@ List<ArrowDirection?> generateSolvableBoard({
     }
 
     if (build(0)) {
-      if (stats != null) stats.elapsedMilliseconds = stopwatch.elapsedMilliseconds;
+      if (stats != null) {
+        stats.elapsedMilliseconds = stopwatch.elapsedMilliseconds;
+      }
       return List.unmodifiable(board);
     }
   }
@@ -162,9 +283,9 @@ List<ArrowDirection?> generateSolvableBoard({
 }
 
 int _escapeCount(List<ArrowDirection?> board) => [
-      for (var index = 0; index < board.length; index++)
-        if (arrowCanEscape(board, index)) index,
-    ].length;
+  for (var index = 0; index < board.length; index++)
+    if (arrowCanEscape(board, index)) index,
+].length;
 
 bool _replaysSolution(List<ArrowDirection?> board, List<int> solution) {
   final current = List<ArrowDirection?>.of(board);

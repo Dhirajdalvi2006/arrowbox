@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -19,6 +20,7 @@ class GradientArrowTile extends StatefulWidget {
     required this.isShaking,
     required this.onTap,
     this.animationDelay = Duration.zero,
+    this.escapeDuration = const Duration(milliseconds: 320),
     this.escapeDistance = 280,
     this.skin = const ClassicArrowSkin(),
     super.key,
@@ -31,6 +33,7 @@ class GradientArrowTile extends StatefulWidget {
   final bool isShaking;
   final VoidCallback onTap;
   final Duration animationDelay;
+  final Duration escapeDuration;
   final double escapeDistance;
   final ArrowSkin skin;
 
@@ -45,6 +48,7 @@ class _GradientArrowTileState extends State<GradientArrowTile>
   late final AnimationController _shakeController;
   late final AnimationController _entryController;
   late final AnimationController _tapController;
+  Timer? _entryTimer;
 
   @override
   void initState() {
@@ -55,7 +59,7 @@ class _GradientArrowTileState extends State<GradientArrowTile>
     );
     _escapeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 320),
+      duration: widget.escapeDuration,
     );
     _shakeController = AnimationController(
       vsync: this,
@@ -76,10 +80,17 @@ class _GradientArrowTileState extends State<GradientArrowTile>
     if (widget.highlighted) {
       _pulseController.repeat(reverse: true);
     }
+    if (widget.isEscaping) {
+      _escapeController.forward();
+    }
 
-    Future.delayed(widget.animationDelay, () {
-      if (mounted) _entryController.forward();
-    });
+    if (widget.animationDelay == Duration.zero) {
+      _entryController.forward();
+    } else {
+      _entryTimer = Timer(widget.animationDelay, () {
+        if (mounted) _entryController.forward();
+      });
+    }
   }
 
   @override
@@ -92,6 +103,9 @@ class _GradientArrowTileState extends State<GradientArrowTile>
       _pulseController.reset();
     }
 
+    if (widget.escapeDuration != oldWidget.escapeDuration) {
+      _escapeController.duration = widget.escapeDuration;
+    }
     if (widget.isEscaping && !oldWidget.isEscaping) {
       _escapeController.forward(from: 0.0);
     }
@@ -103,6 +117,7 @@ class _GradientArrowTileState extends State<GradientArrowTile>
 
   @override
   void dispose() {
+    _entryTimer?.cancel();
     _pulseController.dispose();
     _escapeController.dispose();
     _shakeController.dispose();

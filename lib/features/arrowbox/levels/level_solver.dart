@@ -3,6 +3,17 @@ import 'dart:math';
 import '../arrowbox_logic.dart';
 import 'arrow_board_rules.dart';
 
+class SolverDiagnostics {
+  int calls = 0;
+  int cacheHits = 0;
+  int cacheMisses = 0;
+  int statesVisited = 0;
+  int repeatedStates = 0;
+  int choiceScans = 0;
+  int boardCopies = 0;
+  int elapsedMicroseconds = 0;
+}
+
 class LevelSolutionMetrics {
   const LevelSolutionMetrics({
     required this.solvable,
@@ -29,17 +40,40 @@ class LevelSolutionMetrics {
 class LevelSolver {
   static final Map<String, LevelSolutionMetrics?> _cache = {};
 
-  static LevelSolutionMetrics? analyze(List<ArrowDirection?> board) {
+  static void clearCache() => _cache.clear();
+
+  static LevelSolutionMetrics? analyze(
+    List<ArrowDirection?> board, {
+    SolverDiagnostics? diagnostics,
+  }) {
+    diagnostics?.calls++;
+    final stopwatch = diagnostics == null ? null : (Stopwatch()..start());
     final key = board.map((arrow) => arrow?.index ?? -1).join(',');
-    return _cache.putIfAbsent(key, () => _analyze(board));
+    if (_cache.containsKey(key)) {
+      diagnostics?.cacheHits++;
+      if (stopwatch != null) {
+        diagnostics!.elapsedMicroseconds += stopwatch.elapsedMicroseconds;
+      }
+      return _cache[key];
+    }
+    diagnostics?.cacheMisses++;
+    final result = _analyze(board, diagnostics: diagnostics);
+    _cache[key] = result;
+    if (stopwatch != null) {
+      diagnostics!.elapsedMicroseconds += stopwatch.elapsedMicroseconds;
+    }
+    return result;
   }
 
   static bool isSolvable(List<ArrowDirection?> board) =>
       analyze(board)?.solvable ?? false;
 
-  static LevelSolutionMetrics? _analyze(List<ArrowDirection?> board) {
+  static LevelSolutionMetrics? _analyze(
+    List<ArrowDirection?> board, {
+    SolverDiagnostics? diagnostics,
+  }) {
     if (board.length != 25) return null;
-    final initialChoices = _choices(board).length;
+    final initialChoices = _choices(board, diagnostics: diagnostics).length;
     final visited = <String>{};
     var dependencyDepth = 0;
     var forcedMoves = 0;
@@ -52,14 +86,19 @@ class LevelSolver {
         return true;
       }
       final key = current.map((arrow) => arrow?.index ?? -1).join(',');
-      if (!visited.add(key)) return false;
-      final choices = _choices(current);
+      if (!visited.add(key)) {
+        diagnostics?.repeatedStates++;
+        return false;
+      }
+      diagnostics?.statesVisited++;
+      final choices = _choices(current, diagnostics: diagnostics);
       if (choices.isEmpty) return false;
       final nextStreak = choices.length == 1 ? forcedStreak + 1 : 0;
       dependencyDepth = max(dependencyDepth, nextStreak);
       if (choices.length == 1) forcedMoves++;
       solvedMoves++;
       for (final index in choices) {
+        diagnostics?.boardCopies++;
         final next = List<ArrowDirection?>.of(current)..[index] = null;
         if (search(next, nextStreak, depth + 1)) {
           solution = [index, ...?solution];
@@ -87,8 +126,14 @@ class LevelSolver {
 
   static int max(int a, int b) => a > b ? a : b;
 
-  static List<int> _choices(List<ArrowDirection?> board) => [
-    for (var index = 0; index < board.length; index++)
-      if (arrowCanEscape(board, index)) index,
-  ];
+  static List<int> _choices(
+    List<ArrowDirection?> board, {
+    SolverDiagnostics? diagnostics,
+  }) {
+    diagnostics?.choiceScans++;
+    return [
+      for (var index = 0; index < board.length; index++)
+        if (arrowCanEscape(board, index)) index,
+    ];
+  }
 }

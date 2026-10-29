@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:locate/features/arrowbox/arrowbox_logic.dart';
 import 'package:locate/features/arrowbox/levels/arrow_board_rules.dart';
+import 'package:locate/features/arrowbox/levels/board_generator.dart';
 import 'package:locate/features/arrowbox/levels/level_solver.dart';
 
 void main() {
@@ -40,6 +41,39 @@ void main() {
 
     expect(LevelSolver.analyze(board), isNull);
     expect(LevelSolver.isSolvable(board), isFalse);
+  });
+
+  test('same seed independently regenerates the same replayable board', () {
+    BoardGenerationResult generate() => generateSolvableBoardOutcome(
+          arrowCount: 20,
+          seed: 20261028,
+          minimumInitialChoices: 1,
+          maximumInitialChoices: 6,
+          minimumDependencyDepth: 3,
+          minimumDirectionCount: 3,
+          minimumForcedMoveRatio: 0.05,
+          maxAttempts: 1000,
+          maxNodesPerAttempt: 50000,
+        );
+
+    final first = generate();
+    final second = generate();
+    expect(first.status, BoardGenerationStatus.success);
+    expect(second.status, BoardGenerationStatus.success);
+    final firstLayout = first.board!.map((arrow) => arrow?.index ?? -1).join(',');
+    final secondLayout = second.board!.map((arrow) => arrow?.index ?? -1).join(',');
+    expect(secondLayout, firstLayout);
+
+    for (final board in [first.board!, second.board!]) {
+      final metrics = LevelSolver.analyze(board);
+      expect(metrics, isNotNull);
+      final replay = List<ArrowDirection?>.of(board);
+      for (final index in metrics!.solution) {
+        expect(arrowCanEscape(replay, index), isTrue);
+        replay[index] = null;
+      }
+      expect(replay.every((arrow) => arrow == null), isTrue);
+    }
   });
 
   test('solver solution replays through shared escape rules', () {

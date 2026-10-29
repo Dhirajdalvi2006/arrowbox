@@ -8,9 +8,22 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/arrowbox_widgets.dart';
 import 'arrowbox_board_widgets.dart';
 import 'arrowbox_dialogs.dart';
+import 'arrowbox_input_queue.dart';
 import 'arrowbox_logic.dart';
 import '../arrow_designs/arrow_designs.dart';
 import '../../app.dart';
+
+class _ArrowBoxExitRecord {
+  const _ArrowBoxExitRecord({
+    required this.direction,
+    required this.session,
+    required this.duration,
+  });
+
+  final ArrowDirection direction;
+  final int session;
+  final Duration duration;
+}
 
 class ArrowBoxScreen extends StatefulWidget {
   const ArrowBoxScreen({required this.store, this.initialState, super.key});
@@ -26,7 +39,12 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
     with WidgetsBindingObserver {
   late ArrowBoxState _game;
   int? _hintIndex;
-  int? _escapingIndex;
+  final _inputQueue = ArrowBoxInputQueue();
+  final _animationTiming = AdaptiveAnimationTiming();
+  final Map<int, _ArrowBoxExitRecord> _exiting = {};
+  final Stopwatch _inputClock = Stopwatch()..start();
+  int _session = 0;
+  bool _processingQueue = false;
   int? _shakingIndex;
   bool _busy = false;
   bool _paused = false;
@@ -87,12 +105,24 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
   void dispose() {
     widget.store.removeListener(_appearanceChanged);
     WidgetsBinding.instance.removeObserver(this);
+    _session++;
+    _inputQueue.clear();
+    _exiting.clear();
     _timer?.cancel();
     _saveCurrentGame();
     super.dispose();
   }
 
+  void _invalidatePendingGameplay() {
+    final oldSession = _session;
+    _session++;
+    _inputQueue.invalidateSession(oldSession);
+    _inputQueue.clear();
+    _exiting.clear();
+  }
+
   Future<void> _leaveScreen() async {
+    _invalidatePendingGameplay();
     await widget.store.saveGame(_game.withSeconds(_seconds));
     if (mounted) Navigator.pop(context);
   }
@@ -134,89 +164,118 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
       if (confirm != true || !mounted) return;
     }
 
+    _invalidatePendingGameplay();
     setState(() {
       _game = _game.restart();
       _seconds = 0;
       _hintIndex = null;
-      _escapingIndex = null;
       _shakingIndex = null;
       _paused = false;
     });
     await widget.store.saveGame(_game);
   }
 
-  Future<void> _move(int index) async {
-    if (_busy || _paused || _game.isGameOver || _game.isCleared) return;
+  void _captureMove(int index) {
+    if (_paused || _game.isGameOver || _game.isCleared) return;
     if (index < 0 ||
         index >= _game.board.length ||
-        _game.board[index] == null) {
+        _game.board[index] == null ||
+        _exiting.containsKey(index)) {
       return;
     }
+    final capturedAt = _inputClock.elapsed;
+    final accepted = _inputQueue.enqueue(
+      index: index,
+      session: _session,
+      capturedAt: capturedAt,
+    );
+    if (!accepted) return;
+    _animationTiming.recordValidTap(capturedAt);
+    _hintIndex = null;
+    _drainMoveQueue();
+  }
+
+  Future<void> _drainMoveQueue() async {
+    if (_processingQueue) return;
+    _processingQueue = true;
     _busy = true;
+    try {
+      ArrowBoxInputRequest? request;
+      while (mounted && (request = _inputQueue.takeNext()) != null) {
+        await _executeQueuedMove(request!);
+      }
+    } finally {
+      _processingQueue = false;
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _executeQueuedMove(ArrowBoxInputRequest request) async {
+    if (!mounted || request.session != _session) return;
+    if (_paused || _game.isGameOver || _game.isCleared) return;
+    if (request.index < 0 ||
+        request.index >= _game.board.length ||
+        _game.board[request.index] == null) {
+      return;
+    }
     if (!_startRecorded) {
       _startRecorded = true;
       await widget.store.recordGameStarted();
-      if (!mounted) return;
+      if (!mounted || request.session != _session) return;
     }
     if (!_timerStarted) {
       _timerStarted = true;
       _startTimer();
     }
-    final canEscape = _game.canEscape(index);
 
-    if (canEscape) {
-      if (widget.store.hapticsEnabled) {
-        HapticFeedback.lightImpact();
-      }
-      setState(() {
-        _escapingIndex = index;
-        _hintIndex = null;
-        _busy = true;
-      });
-
-      await Future<void>.delayed(const Duration(milliseconds: 320));
-      if (!mounted) return;
-
-      final result = _game.move(index);
-      setState(() {
-        _game = result.state.withSeconds(_seconds);
-        _escapingIndex = null;
-        _busy = false;
-      });
-      await widget.store.saveGame(_game);
-
-      if (result.state.isCleared) {
-        _timer?.cancel();
-        await _showLevelComplete();
-      }
-    } else {
-      if (widget.store.hapticsEnabled) {
-        HapticFeedback.mediumImpact();
-      }
-      setState(() {
-        _shakingIndex = index;
-        _hintIndex = null;
-        _busy = true;
-      });
-
-      final result = _game.move(index);
-      setState(() {
-        _game = result.state.withSeconds(_seconds);
-      });
-      await widget.store.saveGame(_game);
-
-      await Future<void>.delayed(const Duration(milliseconds: 320));
-      if (!mounted) return;
-      setState(() {
-        _shakingIndex = null;
-        _busy = false;
-      });
-
-      if (result.state.isGameOver) {
-        _timer?.cancel();
-        await _showGameOver();
-      }
+    final direction = _game.board[request.index]!;
+    final canEscape = _game.canEscape(request.index);
+    if (widget.store.hapticsEnabled) {
+      HapticFeedback.lightImpact();
     }
+    final result = _game.move(request.index);
+    if (!mounted || request.session != _session) return;
+
+    if (canEscape && result.wasValid) {
+      final duration = _animationTiming.durationFor(_inputClock.elapsed);
+      setState(() {
+        _game = result.state.withSeconds(_seconds);
+        _exiting[request.index] = _ArrowBoxExitRecord(
+          direction: direction,
+          session: request.session,
+          duration: duration,
+        );
+      });
+      _finishExit(request.index, request.session, duration);
+    } else {
+      setState(() {
+        _game = result.state.withSeconds(_seconds);
+        _shakingIndex = request.index;
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 320));
+      if (!mounted || request.session != _session) return;
+      setState(() => _shakingIndex = null);
+    }
+    await widget.store.saveGame(_game);
+    if (!mounted || request.session != _session) return;
+    if (result.state.isCleared) {
+      _inputQueue.clear();
+      _session++;
+      _timer?.cancel();
+      await _showLevelComplete();
+    } else if (result.state.isGameOver) {
+      _inputQueue.clear();
+      _session++;
+      _timer?.cancel();
+      await _showGameOver();
+    }
+  }
+
+  Future<void> _finishExit(int index, int session, Duration duration) async {
+    await Future<void>.delayed(duration);
+    if (!mounted || session != _session) return;
+    if (_exiting[index]?.session != session) return;
+    setState(() => _exiting.remove(index));
   }
 
   Future<void> _undo() async {
@@ -224,9 +283,15 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
     if (widget.store.hapticsEnabled) {
       HapticFeedback.selectionClick();
     }
+    final previousBoard = _game.board;
     setState(() {
       _game = _game.undo();
       _hintIndex = null;
+      for (var i = 0; i < _game.board.length; i++) {
+        if (_game.board[i] != null && previousBoard[i] == null) {
+          _exiting.remove(i);
+        }
+      }
     });
     await widget.store.saveGame(_game);
   }
@@ -284,6 +349,7 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
               if (mounted) Navigator.pop(context);
               return;
             }
+            _invalidatePendingGameplay();
             setState(() {
               _game = nextGame;
               _seconds = 0;
@@ -298,6 +364,7 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
         },
         onReplayLevel: () async {
           Navigator.pop(dialogContext);
+          _invalidatePendingGameplay();
           setState(() {
             _game = _game.restart();
             _seconds = 0;
@@ -333,6 +400,7 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
         mistakes: _game.mistakes,
         onRestart: () async {
           Navigator.pop(dialogContext);
+          _invalidatePendingGameplay();
           setState(() {
             _game = _game.restart();
             _seconds = 0;
@@ -621,8 +689,7 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
                                         5;
                                     final indexes = [
                                       for (var index = 0; index < 25; index++)
-                                        if (index != _escapingIndex) index,
-                                      ?_escapingIndex,
+                                        index,
                                     ];
 
                                     return SizedBox.expand(
@@ -641,9 +708,26 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
                                               width: tileSize,
                                               height: tileSize,
                                               child: _game.board[index] == null
-                                                  ? EmptyBoardCell(
-                                                      theme: boardTheme,
-                                                    )
+                                                  ? (_exiting[index] == null
+                                                        ? EmptyBoardCell(
+                                                            theme: boardTheme,
+                                                          )
+                                                        : GradientArrowTile(
+                                                            direction:
+                                                                _exiting[index]!
+                                                                    .direction,
+                                                            skin: skin,
+                                                            index: index,
+                                                            highlighted: false,
+                                                            isEscaping: true,
+                                                            isShaking: false,
+                                                            onTap: () {},
+                                                            escapeDuration:
+                                                                _exiting[index]!
+                                                                    .duration,
+                                                            escapeDistance:
+                                                                escapeDistance,
+                                                          ))
                                                   : GradientArrowTile(
                                                       direction:
                                                           _game.board[index]!,
@@ -651,13 +735,18 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
                                                       index: index,
                                                       highlighted:
                                                           index == _hintIndex,
-                                                      isEscaping:
-                                                          index ==
-                                                          _escapingIndex,
+                                                      isEscaping: false,
                                                       isShaking:
                                                           index ==
                                                           _shakingIndex,
-                                                      onTap: () => _move(index),
+                                                      onTap: () =>
+                                                          _captureMove(index),
+                                                      escapeDuration:
+                                                          _animationTiming
+                                                              .durationFor(
+                                                                _inputClock
+                                                                    .elapsed,
+                                                              ),
                                                       escapeDistance:
                                                           escapeDistance,
                                                       animationDelay: Duration(

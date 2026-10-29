@@ -65,7 +65,7 @@ class ArrowBoxLevel {
     if (level < 1 || level > count) {
       throw RangeError.range(level, 1, count, 'level');
     }
-    return LevelCatalog.levels[level - 1];
+    return LevelCatalog.levelFor(level);
   }
 }
 
