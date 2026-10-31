@@ -49,7 +49,7 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.byType(ArrowSkinPreviewBoard), findsNWidgets(8));
+    expect(find.byType(ArrowSkinPreviewBoard), findsNWidgets(11));
     expect(tester.takeException(), isNull);
   });
 

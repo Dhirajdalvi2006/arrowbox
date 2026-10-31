@@ -53,7 +53,12 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            val storeFilePath = keystoreProperties["storeFile"]?.toString()
+            if (storeFilePath != null && file(storeFilePath).exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 }

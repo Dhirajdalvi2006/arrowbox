@@ -42,29 +42,35 @@ void main() {
       expect(state.canEscape(24), isTrue);
     });
 
-    test('Arrows blocked by another arrow cannot escape and decrement lives', () {
-      final board = List<ArrowDirection?>.filled(25, null);
-      // Row 2 Col 2 points right, but Row 2 Col 4 is occupied
-      board[12] = ArrowDirection.right;
-      board[14] = ArrowDirection.down;
+    test(
+      'Arrows blocked by another arrow cannot escape and decrement lives',
+      () {
+        final board = List<ArrowDirection?>.filled(25, null);
+        // Row 2 Col 2 points right, but Row 2 Col 4 is occupied
+        board[12] = ArrowDirection.right;
+        board[14] = ArrowDirection.down;
 
-      var state = ArrowBoxState.fromJson({
-        'level': 1,
-        'lives': 3,
-        'mistakes': 0,
-        'board': board.map((a) => a?.name).toList(),
-      });
+        var state = ArrowBoxState.fromJson({
+          'level': 1,
+          'lives': 3,
+          'mistakes': 0,
+          'board': board.map((a) => a?.name).toList(),
+        });
 
-      expect(state.canEscape(12), isFalse);
-      expect(state.canEscape(14), isTrue); // 14 points down to col 4 row 3, 4 (empty) -> can escape!
+        expect(state.canEscape(12), isFalse);
+        expect(
+          state.canEscape(14),
+          isTrue,
+        ); // 14 points down to col 4 row 3, 4 (empty) -> can escape!
 
-      // Attempt invalid move on blocked arrow
-      final result = state.move(12);
-      expect(result.wasValid, isFalse);
-      expect(result.state.lives, 2);
-      expect(result.state.mistakes, 1);
-      expect(result.state.board[12], ArrowDirection.right); // still on board
-    });
+        // Attempt invalid move on blocked arrow
+        final result = state.move(12);
+        expect(result.wasValid, isFalse);
+        expect(result.state.lives, 2);
+        expect(result.state.mistakes, 1);
+        expect(result.state.board[12], ArrowDirection.right); // still on board
+      },
+    );
 
     test('Successful arrow removal after valid move', () {
       final board = List<ArrowDirection?>.filled(25, null);
@@ -117,20 +123,6 @@ void main() {
       expect(restarted.mistakes, 0);
       expect(restarted.board, equals(initialBoard));
     });
-
-    test('Undo restores previous state', () {
-      var state = ArrowBoxState.initial(level: 1);
-      final initialBoard = List<ArrowDirection?>.from(state.board);
-      final escapeIdx = state.nextEscapeIndex!;
-
-      final moveRes = state.move(escapeIdx);
-      expect(moveRes.wasValid, isTrue);
-      expect(moveRes.state.board[escapeIdx], isNull);
-
-      final undone = moveRes.state.undo();
-      expect(undone.board, equals(initialBoard));
-      expect(undone.board[escapeIdx], isNotNull);
-    });
   });
 
   group('Progress persistence', () {
@@ -155,21 +147,24 @@ void main() {
       expect(reloaded.levelStars[5], 1);
     });
 
-    test('Saved games preserve history, hints, and remain isolated by level', () async {
-      SharedPreferences.setMockInitialValues({});
-      final store = await AppStore.load();
-      final first = ArrowBoxState.initial(level: 1);
-      final firstMoved = first.move(first.nextEscapeIndex!).state.useHint();
-      final second = ArrowBoxState.initial(level: 2).withSeconds(9);
+    test(
+      'Saved games preserve history, hints, and remain isolated by level',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final store = await AppStore.load();
+        final first = ArrowBoxState.initial(level: 1);
+        final firstMoved = first.move(first.nextEscapeIndex!).state.useHint();
+        final second = ArrowBoxState.initial(level: 2).withSeconds(9);
 
-      await store.saveGame(firstMoved);
-      await store.saveGame(second);
-      final reloaded = await AppStore.load();
+        await store.saveGame(firstMoved);
+        await store.saveGame(second);
+        final reloaded = await AppStore.load();
 
-      expect(reloaded.savedGames[1]?.hintsUsed, 1);
-      expect(reloaded.savedGames[1]?.history, isNotEmpty);
-      expect(reloaded.savedGames[2]?.secondsElapsed, 9);
-    });
+        expect(reloaded.savedGames[1]?.hintsUsed, 1);
+        expect(reloaded.savedGames[1]?.history, isNotEmpty);
+        expect(reloaded.savedGames[2]?.secondsElapsed, 9);
+      },
+    );
 
     test('High-number levels persist progress and saved sessions', () async {
       SharedPreferences.setMockInitialValues({});
@@ -183,33 +178,51 @@ void main() {
       expect(reloaded.savedGames[417]?.secondsElapsed, 12);
     });
 
-    test('Clearing a level save does not resurrect it after queued writes', () async {
-      SharedPreferences.setMockInitialValues({});
-      final store = await AppStore.load();
-      final state = ArrowBoxState.initial(level: 1);
+    test(
+      'Clearing a level save does not resurrect it after queued writes',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final store = await AppStore.load();
+        final state = ArrowBoxState.initial(level: 1);
 
-      final save = store.saveGame(state);
-      final clear = store.clearSavedGame(level: 1);
-      await Future.wait([save, clear]);
-      final reloaded = await AppStore.load();
+        final save = store.saveGame(state);
+        final clear = store.clearSavedGame(level: 1);
+        await Future.wait([save, clear]);
+        final reloaded = await AppStore.load();
 
-      expect(reloaded.savedGames, isEmpty);
-      expect(reloaded.hasSavedGame, isFalse);
-    });
+        expect(reloaded.savedGames, isEmpty);
+        expect(reloaded.hasSavedGame, isFalse);
+      },
+    );
   });
 
   group('500-level catalog', () {
     test('Catalog has 500 deterministic levels with mixed difficulty', () {
       expect(ArrowBoxLevel.count, 500);
       expect(ArrowBoxLevel.forNumber(1).occupiedCount, 8);
-      expect(ArrowBoxLevel.forNumber(500).dependencyDepth, greaterThanOrEqualTo(0));
+      expect(
+        ArrowBoxLevel.forNumber(500).dependencyDepth,
+        greaterThanOrEqualTo(0),
+      );
       expect(ArrowBoxLevel.forNumber(100).difficulty, ArrowBoxDifficulty.easy);
-      expect(ArrowBoxLevel.forNumber(101).difficulty, ArrowBoxDifficulty.medium);
-      expect(ArrowBoxLevel.forNumber(200).difficulty, ArrowBoxDifficulty.medium);
+      expect(
+        ArrowBoxLevel.forNumber(101).difficulty,
+        ArrowBoxDifficulty.medium,
+      );
+      expect(
+        ArrowBoxLevel.forNumber(200).difficulty,
+        ArrowBoxDifficulty.medium,
+      );
       expect(ArrowBoxLevel.forNumber(201).difficulty, ArrowBoxDifficulty.hard);
       expect(ArrowBoxLevel.forNumber(350).difficulty, ArrowBoxDifficulty.hard);
-      expect(ArrowBoxLevel.forNumber(351).difficulty, ArrowBoxDifficulty.ultraHard);
-      expect(ArrowBoxLevel.forNumber(500).difficulty, ArrowBoxDifficulty.ultraHard);
+      expect(
+        ArrowBoxLevel.forNumber(351).difficulty,
+        ArrowBoxDifficulty.ultraHard,
+      );
+      expect(
+        ArrowBoxLevel.forNumber(500).difficulty,
+        ArrowBoxDifficulty.ultraHard,
+      );
       final difficulties = <ArrowBoxDifficulty>{
         for (var level = 1; level <= ArrowBoxLevel.count; level++)
           ArrowBoxLevel.forNumber(level).difficulty,
@@ -223,7 +236,9 @@ void main() {
         final catalogLevel = ArrowBoxLevel.forNumber(level);
         expect(catalogLevel.arrows, hasLength(25));
         expect(
-          layouts.add(catalogLevel.arrows.map((arrow) => arrow?.name ?? '-').join(',')),
+          layouts.add(
+            catalogLevel.arrows.map((arrow) => arrow?.name ?? '-').join(','),
+          ),
           isTrue,
           reason: 'Level $level duplicates another catalog board',
         );
@@ -265,11 +280,19 @@ void main() {
         if (catalogLevel.difficulty == ArrowBoxDifficulty.hard) {
           expect(occupied, inInclusiveRange(20, 25), reason: 'Level $level');
           expect(firstChoices, inInclusiveRange(1, 6), reason: 'Level $level');
-          expect(forcedRatio, greaterThanOrEqualTo(0.0), reason: 'Level $level');
+          expect(
+            forcedRatio,
+            greaterThanOrEqualTo(0.0),
+            reason: 'Level $level',
+          );
         } else {
           expect(occupied, 25, reason: 'Level $level');
           expect(firstChoices, inInclusiveRange(1, 8), reason: 'Level $level');
-          expect(forcedRatio, greaterThanOrEqualTo(0.0), reason: 'Level $level');
+          expect(
+            forcedRatio,
+            greaterThanOrEqualTo(0.0),
+            reason: 'Level $level',
+          );
         }
       }
     });
@@ -281,7 +304,11 @@ void main() {
         for (final arrow in catalogLevel.arrows) {
           if (arrow != null) counts[arrow.index]++;
         }
-        expect(counts.every((count) => count >= 3), isTrue, reason: 'Level $level: $counts');
+        expect(
+          counts.every((count) => count >= 3),
+          isTrue,
+          reason: 'Level $level: $counts',
+        );
       }
     });
 
@@ -295,7 +322,11 @@ void main() {
         final first = state.nextEscapeIndex;
         expect(first, isNotNull, reason: 'Level $level has no first move');
         final result = state.move(first!);
-        expect(result.wasValid, isTrue, reason: 'Level $level first move is invalid');
+        expect(
+          result.wasValid,
+          isTrue,
+          reason: 'Level $level first move is invalid',
+        );
         state = result.state;
         final blockedRemaining = [
           for (var index = 0; index < state.board.length; index++)
@@ -310,7 +341,11 @@ void main() {
       for (var level = 1; level <= ArrowBoxLevel.count; level++) {
         final first = ArrowBoxLevel.forNumber(level);
         final second = ArrowBoxLevel.forNumber(level);
-        expect(second.arrows, equals(first.arrows), reason: 'Level $level changed');
+        expect(
+          second.arrows,
+          equals(first.arrows),
+          reason: 'Level $level changed',
+        );
         expect(second.difficulty, first.difficulty);
         expect(second.difficultyScore, first.difficultyScore);
       }
@@ -339,13 +374,21 @@ void main() {
         var moves = 0;
         while (!state.isCleared) {
           final hint = state.nextEscapeIndex;
-          expect(hint, isNotNull, reason: 'Level $l should have a valid next move at step $moves');
+          expect(
+            hint,
+            isNotNull,
+            reason: 'Level $l should have a valid next move at step $moves',
+          );
           final result = state.move(hint!);
           expect(result.wasValid, isTrue);
           state = result.state;
           moves++;
         }
-        expect(state.isCleared, isTrue, reason: 'Level $l should be completely cleared');
+        expect(
+          state.isCleared,
+          isTrue,
+          reason: 'Level $l should be completely cleared',
+        );
       }
     });
 
@@ -378,7 +421,9 @@ void main() {
         final forcedRatios = <double>[];
         final directionMinimums = <int>[];
         for (var level = band.start; level <= band.end; level++) {
-          final metrics = LevelSolver.analyze(ArrowBoxLevel.forNumber(level).arrows)!;
+          final metrics = LevelSolver.analyze(
+            ArrowBoxLevel.forNumber(level).arrows,
+          )!;
           depths.add(metrics.dependencyDepth);
           forcedRatios.add(metrics.forcedMoveRatio);
           directionMinimums.add(metrics.minimumDirectionCount);

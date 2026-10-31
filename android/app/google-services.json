@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1083971733030-euhiaorb7bfp6t4n68dapleagpuo26m0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.arrowbox.game",
+            "certificate_hash": "7fbbcbd1692db3ba2577e8b2730e3aeb9111bfed"
+          }
+        },
+        {
           "client_id": "1083971733030-nh21126hnpinup86fvarmhq39v1nb917.apps.googleusercontent.com",
           "client_type": 3
         }

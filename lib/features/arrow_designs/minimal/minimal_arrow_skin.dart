@@ -23,15 +23,17 @@ class MinimalArrowSkin extends ArrowSkin {
     bool isInteractive = false,
   }) {
     final color = directionColor(direction);
-    return CustomPaint(
-      size: Size.square(size),
-      painter: ArrowSkinPainter(
-        direction: direction,
-        color: color,
-        style: ArrowPainterStyle.minimal,
-        highlighted: highlighted,
+    return SizedBox.square(
+      dimension: size,
+      child: CustomPaint(
+        painter: ArrowSkinPainter(
+          direction: direction,
+          color: color,
+          style: ArrowPainterStyle.minimal,
+          highlighted: highlighted,
+        ),
+        child: skinIcon(direction: direction, size: size * .62, color: color),
       ),
-      child: skinIcon(direction: direction, size: size * .62, color: color),
     );
   }
 }

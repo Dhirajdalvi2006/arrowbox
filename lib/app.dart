@@ -14,6 +14,7 @@ import 'features/arrowbox/arrowbox_logic.dart';
 import 'features/arrowbox/arrowbox_screen.dart';
 import 'features/arrowbox/levels/level_catalog.dart';
 import 'features/auth/login_profile_button.dart';
+import 'features/arrow_lab/arrow_lab_screen.dart';
 import 'features/shell/app_shell.dart';
 
 class ArrowBoxApp extends StatelessWidget {
@@ -53,6 +54,7 @@ class ArrowBoxApp extends StatelessWidget {
               moves: 6,
               mistakes: 0,
               hintsUsed: 0,
+              lives: 3,
               stars: 3,
               seconds: 42,
               onNextLevel: () {},
@@ -118,145 +120,469 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
+    final completedCount = store.completedLevels.length;
+    final progressRatio = (completedCount / AppStore.totalLevels).clamp(
+      0.0,
+      1.0,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.getBackground(context),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Top Bar with Mini Logo + Title and Theme Toggle + Settings
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final compact = constraints.maxWidth < 360;
-                  final controlSize = compact ? 44.0 : 56.0;
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: FittedBox(
-                          alignment: Alignment.centerLeft,
-                          fit: BoxFit.scaleDown,
-                          child: const Row(
+      body: Stack(
+        children: [
+          // Ambient Glow Background Accents
+          Positioned(
+            top: -100,
+            left: -50,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: (isDark ? AppColors.primary : AppColors.cyan).withValues(
+                  alpha: isDark ? 0.15 : 0.08,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -80,
+            right: -60,
+            child: Container(
+              width: 280,
+              height: 280,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.cyan.withValues(alpha: isDark ? 0.12 : 0.06),
+              ),
+            ),
+          ),
+
+          // Main Content
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Top Bar with Mini Logo + Title and Theme Toggle + Settings
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final compact = constraints.maxWidth < 360;
+                      final controlSize = compact ? 44.0 : 52.0;
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: FittedBox(
+                              alignment: Alignment.centerLeft,
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  ArrowBoxLogoMark(size: 34),
+                                  SizedBox(width: 12),
+                                  ArrowBoxTitle(fontSize: 24),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              ArrowBoxLogoMark(size: 28),
-                              SizedBox(width: 8),
-                              ArrowBoxTitle(fontSize: 20),
+                              ArrowBoxHeaderIconButton(
+                                size: controlSize,
+                                icon: isDark
+                                    ? Icons.light_mode_rounded
+                                    : Icons.dark_mode_rounded,
+                                tooltip: 'Toggle Theme',
+                                onPressed: () {
+                                  final current = store.themeMode;
+                                  if (current == ThemeMode.dark) {
+                                    store.setThemeMode(ThemeMode.light);
+                                  } else {
+                                    store.setThemeMode(ThemeMode.dark);
+                                  }
+                                },
+                              ),
+                              SizedBox(width: compact ? 4 : 8),
+                              const LoginProfileButton(),
                             ],
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ArrowBoxHeaderIconButton(
-                            size: controlSize,
-                            icon: isDark
-                                ? Icons.light_mode_rounded
-                                : Icons.dark_mode_rounded,
-                            tooltip: 'Toggle Theme',
-                            onPressed: () {
-                              final current = store.themeMode;
-                              if (current == ThemeMode.dark) {
-                                store.setThemeMode(ThemeMode.light);
-                              } else {
-                                store.setThemeMode(ThemeMode.dark);
-                              }
-                            },
-                          ),
-                          SizedBox(width: compact ? 4 : 8),
-                          const LoginProfileButton(),
                         ],
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Immersive Central Hero Card with Glowing Aura
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isDark
+                            ? [
+                                AppColors.getCard(context)
+                                    .withValues(alpha: 0.85),
+                                AppColors.getCard(context)
+                                    .withValues(alpha: 0.4),
+                              ]
+                            : [
+                                Colors.white.withValues(alpha: 0.9),
+                                Colors.white.withValues(alpha: 0.6),
+                              ],
                       ),
-                    ],
-                  );
-                },
-              ),
-
-              const SizedBox(height: 14),
-
-              // Central hero artwork
-              const ArrowBoxHeroArtwork(size: 200),
-
-              const SizedBox(height: 18),
-
-              // Title and Taglines
-              const ArrowBoxTitle(fontSize: 34),
-              const SizedBox(height: 6),
-              const Text(
-                'Think. Aim. Escape.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.cyan,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: Container(
-                  width: 32,
-                  height: 3,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBright.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(1.5),
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(
+                        color: AppColors.getBorder(context)
+                            .withValues(alpha: 0.8),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isDark
+                              ? const Color(0x441685FF)
+                              : const Color(0x181685FF),
+                          blurRadius: 36,
+                          spreadRadius: 2,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // Floating Hero Artwork with Subtle Pulse
+                        const ArrowBoxHeroArtwork(size: 190),
+                        const SizedBox(height: 20),
+                        const ArrowBoxTitle(fontSize: 30),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.cyan.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: AppColors.cyan.withValues(alpha: 0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Text(
+                            '✨ THINK • AIM • ESCAPE',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.cyan,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Clear the intricate vector grid by masterminding the exact escape path for every arrow.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.getTextSecondary(context),
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Clear the board by finding the right path\nfor every arrow.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.getTextSecondary(context),
-                  fontSize: 14,
-                  height: 1.4,
-                ),
-              ),
 
-              const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
-              // Primary Play Button
-              ArrowBoxPrimaryButton(
-                label: 'Play Now',
-                icon: Icons.play_arrow_rounded,
-                showTrailingChevron: true,
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => LevelSelectionScreen(store: store),
-                  ),
-                ),
-              ),
-
-              // Secondary Continue Button (if saved progress exists)
-              if (store.hasSavedGame) ...[
-                const SizedBox(height: 12),
-                ArrowBoxSecondaryButton(
-                  label: 'Continue Level ${store.savedGame!.level}',
-                  icon: Icons.refresh_rounded,
-                  showTrailingChevron: true,
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ArrowBoxScreen(
-                        store: store,
-                        initialState: store.savedGame,
+                  // Primary Play & Continue CTAs
+                  ArrowBoxPrimaryButton(
+                    label: 'Play Adventure',
+                    icon: Icons.play_arrow_rounded,
+                    showTrailingChevron: true,
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => LevelSelectionScreen(store: store),
                       ),
                     ),
                   ),
-                ),
-              ],
 
-              const SizedBox(height: 24),
-              const SizedBox(height: 96),
-            ],
+                  if (store.hasSavedGame) ...[
+                    const SizedBox(height: 12),
+                    ArrowBoxSecondaryButton(
+                      label: 'Continue Level ${store.savedGame!.level}',
+                      icon: Icons.refresh_rounded,
+                      showTrailingChevron: true,
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ArrowBoxScreen(
+                            store: store,
+                            initialState: store.savedGame,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 24),
+
+                  // Quick Access Modes Grid (Arrow Lab, How to Play)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ArrowBoxPressScale(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ArrowLabScreen(store: store),
+                              ),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.getCard(context),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: AppColors.getBorder(context),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 38,
+                                    height: 38,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.cyan.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(
+                                      Icons.palette_rounded,
+                                      color: AppColors.cyan,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Arrow Lab',
+                                    style: TextStyle(
+                                      color: AppColors.getTextPrimary(context),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Custom skins & themes',
+                                    style: TextStyle(
+                                      color: AppColors.getTextSecondary(
+                                        context,
+                                      ),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ArrowBoxPressScale(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const HowToPlayScreen(),
+                              ),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.getCard(context),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: AppColors.getBorder(context),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 38,
+                                    height: 38,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(
+                                      Icons.help_outline_rounded,
+                                      color: AppColors.primaryBright,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'How to Play',
+                                    style: TextStyle(
+                                      color: AppColors.getTextPrimary(context),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Rules & guide',
+                                    style: TextStyle(
+                                      color: AppColors.getTextSecondary(
+                                        context,
+                                      ),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Progress Summary Card (Linked to Level Selection / Progress)
+                  ArrowBoxPressScale(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(24),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LevelSelectionScreen(store: store),
+                        ),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: AppColors.getCard(context),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: AppColors.getBorder(context),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.18,
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: const Icon(
+                                    Icons.emoji_events_rounded,
+                                    color: AppColors.primaryBright,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Player Mastery Progress',
+                                        style: TextStyle(
+                                          color: AppColors.getTextPrimary(
+                                            context,
+                                          ),
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        '$completedCount of ${AppStore.totalLevels} levels conquered',
+                                        style: TextStyle(
+                                          color: AppColors.getTextSecondary(
+                                            context,
+                                          ),
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.cyan.withValues(
+                                      alpha: 0.15,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '${(progressRatio * 100).toStringAsFixed(0)}%',
+                                    style: TextStyle(
+                                      color: AppColors.cyan,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: LinearProgressIndicator(
+                                value: progressRatio,
+                                backgroundColor: AppColors.getBorder(context)
+                                    .withValues(alpha: 0.4),
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                  AppColors.primaryBright,
+                                ),
+                                minHeight: 8,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 80),
+                ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -269,10 +595,12 @@ class LevelSelectionScreen extends StatefulWidget {
   const LevelSelectionScreen({
     required this.store,
     this.embedded = false,
+    this.onBackPressed,
     super.key,
   });
   final AppStore store;
   final bool embedded;
+  final VoidCallback? onBackPressed;
 
   @override
   State<LevelSelectionScreen> createState() => _LevelSelectionScreenState();
@@ -284,60 +612,27 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
 
   AppStore get store => widget.store;
 
-  Future<void> _openDebugLevel() async {
-    final controller = TextEditingController();
-    final level = await showDialog<int>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Open level'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(hintText: '1-${AppStore.totalLevels}'),
-          onSubmitted: (_) => Navigator.pop(
-            dialogContext,
-            int.tryParse(controller.text.trim()),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(
-              dialogContext,
-              int.tryParse(controller.text.trim()),
-            ),
-            child: const Text('Open'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (!mounted ||
-        level == null ||
-        level < 1 ||
-        level > AppStore.totalLevels) {
-      return;
-    }
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ArrowBoxScreen(
-          store: store,
-          initialState:
-              store.savedGames[level] ?? ArrowBoxState.initial(level: level),
-        ),
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _handleBack() {
+    if (widget.onBackPressed != null) {
+      widget.onBackPressed!();
+    } else if (widget.embedded) {
+      // Embedded without callback
+    } else if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AppShell(store: store),
+        ),
+      );
+    }
   }
 
   @override
@@ -346,7 +641,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
     final query = _searchController.text.trim();
     final filteredLevels =
         List<int>.generate(AppStore.totalLevels, (index) => index + 1).where((
-          level,
+          level
         ) {
           final matchesQuery =
               query.isEmpty || level.toString().contains(query);
@@ -359,17 +654,17 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
       backgroundColor: AppColors.getBackground(context),
       body: SafeArea(
         child: Column(
-          children: [
-            // Top Bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              child: Row(
-                children: [
-                  ArrowBoxHeaderIconButton(
-                    icon: Icons.arrow_back_rounded,
-                    tooltip: 'Back',
-                    onPressed: () => Navigator.pop(context),
-                  ),
+            children: [
+              // Top Bar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                child: Row(
+                  children: [
+                    ArrowBoxHeaderIconButton(
+                      icon: Icons.arrow_back_rounded,
+                      tooltip: 'Back',
+                      onPressed: _handleBack,
+                    ),
                   Expanded(
                     child: Text(
                       'Select Level',
@@ -381,14 +676,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                       ),
                     ),
                   ),
-                  if (kDebugMode)
-                    IconButton(
-                      tooltip: 'Debug: open level',
-                      icon: const Icon(Icons.developer_mode_rounded),
-                      onPressed: _openDebugLevel,
-                    )
-                  else
-                    const SizedBox(width: 40),
+                  const SizedBox(width: 40),
                 ],
               ),
             ),
@@ -530,7 +818,8 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                   final isCompleted = store.completedLevels.contains(level);
                   final isCurrent =
                       level == store.unlockedLevel && !isCompleted;
-                  final isLocked = level > store.unlockedLevel;
+                  final isLocked =
+                      !store.isAdmin && level > store.unlockedLevel;
                   final difficulty = LevelCatalog.difficultyFor(level);
 
                   return Semantics(
@@ -718,7 +1007,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _authError = 'Sign-in failed. Please try again.';
+          _authError = e.toString().replaceFirst(
+            RegExp(r'^(Exception|Error|StateError|UnsupportedError):\s*'),
+            '',
+          );
           _isAuthLoading = false;
         });
       }
@@ -806,104 +1098,139 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       children: [
                                         CircleAvatar(
                                           radius: 24,
-                                          backgroundColor: AppColors.getBorder(context),
+                                          backgroundColor: AppColors.getBorder(
+                                            context,
+                                          ),
                                           backgroundImage: user.photoURL != null
                                               ? NetworkImage(user.photoURL!)
                                               : null,
-                                        child: user.photoURL == null
-                                            ? const Icon(Icons.person, color: AppColors.primaryBright)
-                                            : null,
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              user.displayName ?? 'Signed In',
-                                              style: TextStyle(
-                                                color: AppColors.getTextPrimary(context),
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            if (user.email != null)
+                                          child: user.photoURL == null
+                                              ? const Icon(
+                                                  Icons.person,
+                                                  color:
+                                                      AppColors.primaryBright,
+                                                )
+                                              : null,
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
                                               Text(
-                                                user.email!,
+                                                user.displayName ?? 'Signed In',
                                                 style: TextStyle(
-                                                  color: AppColors.getTextSecondary(context),
+                                                  color:
+                                                      AppColors.getTextPrimary(
+                                                        context,
+                                                      ),
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                              if (user.email != null)
+                                                Text(
+                                                  user.email!,
+                                                  style: TextStyle(
+                                                    color:
+                                                        AppColors.getTextSecondary(
+                                                          context,
+                                                        ),
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ArrowBoxSecondaryButton(
+                                        label: _isAuthLoading
+                                            ? 'Signing Out...'
+                                            : 'Sign Out',
+                                        icon: Icons.logout_rounded,
+                                        onPressed: _isAuthLoading
+                                            ? () {}
+                                            : _handleSignOut,
+                                      ),
+                                    ),
+                                  ] else ...[
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.account_circle_outlined,
+                                          color: AppColors.primaryBright,
+                                          size: 28,
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Your Account',
+                                                style: TextStyle(
+                                                  color:
+                                                      AppColors.getTextPrimary(
+                                                        context,
+                                                      ),
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                              Text(
+                                                'Sign in to connect your Google account.',
+                                                style: TextStyle(
+                                                  color:
+                                                      AppColors.getTextSecondary(
+                                                        context,
+                                                      ),
                                                   fontSize: 13,
                                                 ),
                                               ),
-                                          ],
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    if (_authError != null) ...[
+                                      Text(
+                                        _authError!,
+                                        style: const TextStyle(
+                                          color: AppColors.error,
+                                          fontSize: 12,
                                         ),
                                       ),
+                                      const SizedBox(height: 8),
                                     ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ArrowBoxSecondaryButton(
-                                      label: _isAuthLoading ? 'Signing Out...' : 'Sign Out',
-                                      icon: Icons.logout_rounded,
-                                      onPressed: _isAuthLoading ? () {} : _handleSignOut,
-                                    ),
-                                  ),
-                                ] else ...[
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.account_circle_outlined, color: AppColors.primaryBright, size: 28),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Your Account',
-                                              style: TextStyle(
-                                                color: AppColors.getTextPrimary(context),
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            Text(
-                                              'Sign in to connect your Google account.',
-                                              style: TextStyle(
-                                                color: AppColors.getTextSecondary(context),
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ArrowBoxPrimaryButton(
+                                        label: _isAuthLoading
+                                            ? 'Signing In...'
+                                            : 'Continue with Google',
+                                        icon: Icons.login_rounded,
+                                        onPressed: _isAuthLoading
+                                            ? () {}
+                                            : _handleSignIn,
                                       ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  if (_authError != null) ...[
-                                    Text(
-                                      _authError!,
-                                      style: const TextStyle(color: AppColors.error, fontSize: 12),
                                     ),
-                                    const SizedBox(height: 8),
                                   ],
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ArrowBoxPrimaryButton(
-                                      label: _isAuthLoading ? 'Signing In...' : 'Continue with Google',
-                                      icon: Icons.login_rounded,
-                                      onPressed: _isAuthLoading ? () {} : _handleSignIn,
-                                    ),
-                                  ),
                                 ],
-                              ],
+                              ),
                             ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 22),
-                ],
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 22),
+                  ],
 
                   // GAMEPLAY SECTION
                   const _SettingsSectionHeader(title: 'GAMEPLAY'),

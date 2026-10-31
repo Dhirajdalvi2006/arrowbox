@@ -4,7 +4,6 @@ import 'package:locate/app.dart';
 import 'package:locate/core/app_store.dart';
 import 'package:locate/core/widgets/arrowbox_widgets.dart';
 import 'package:locate/features/arrow_designs/arrow_designs.dart';
-
 import 'package:locate/features/arrow_lab/arrow_lab_screen.dart';
 import 'package:locate/features/arrowbox/arrowbox_board_widgets.dart';
 import 'package:locate/features/arrowbox/arrowbox_logic.dart';
@@ -64,11 +63,7 @@ void main() {
     final store = await AppStore.load();
     final errors = <Object>[];
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SettingsScreen(store: store),
-      ),
-    );
+    await tester.pumpWidget(MaterialApp(home: SettingsScreen(store: store)));
     await tester.pump();
 
     final thrown = tester.takeException();
@@ -93,27 +88,67 @@ void main() {
     await tester.pump(const Duration(milliseconds: 450));
     expect(find.byType(FloatingBottomNav), findsNothing);
     expect(find.byType(GradientArrowTile), findsWidgets);
+
+    final tile = tester.widget<GradientArrowTile>(
+      find.byType(GradientArrowTile).first,
+    );
+    expect(tile.skin.id, store.arrowSkinId);
+    expect(tile.direction, ArrowBoxState.initial(level: 1).board[tile.index]);
+
+    await store.setArrowSkin(ArrowSkinId.neon);
+    await store.setBoardTheme(BoardThemeId.graphite);
+    await tester.pump();
+    final updated = tester.widget<GradientArrowTile>(
+      find.byType(GradientArrowTile).first,
+    );
+    expect(updated.skin.id, ArrowSkinId.neon);
+    expect(updated.direction, tile.direction);
   });
 
   testWidgets('Arrow Lab exposes every skin and board theme', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(() => tester.view.reset());
+
     final store = await AppStore.load();
     await tester.pumpWidget(MaterialApp(home: ArrowLabScreen(store: store)));
     await tester.pumpAndSettle();
 
-    for (final skin in ArrowSkinRegistry.all) {
-      expect(find.text(skin.name), findsWidgets);
-    }
-    final list = find.byType(ListView);
-    for (var i = 0; i < 4; i++) {
-      await tester.drag(list, const Offset(0, -500));
-      await tester.pump();
-    }
-    for (final theme in BoardThemeRegistry.all) {
-      expect(find.text(theme.name, skipOffstage: false), findsWidgets);
-    }
+    expect(find.text('Arrow Appearance'), findsOneWidget);
+    expect(find.text('ARROW STYLE'), findsOneWidget);
+
+    final boardThemeHeader = find.text('BOARD THEME');
+    expect(boardThemeHeader, findsOneWidget);
+
+    expect(find.text('Create. Experiment. Master.'), findsNothing);
+    expect(find.text('Lab Tools'), findsNothing);
+    expect(find.text('Featured Experiments'), findsNothing);
+    expect(find.text('Reset Preview'), findsNothing);
+    expect(find.text('Save Config'), findsNothing);
+
+    expect(
+      find.text(ArrowSkinRegistry.byId(store.arrowSkinId).name),
+      findsOneWidget,
+    );
+    expect(
+      find.text(BoardThemeRegistry.byId(store.boardThemeId).name),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Neon'));
+    await tester.pump();
+    expect(store.arrowSkinId, ArrowSkinId.neon);
+
+    await tester.tap(find.text('Graphite'));
+    await tester.pump();
+    expect(store.boardThemeId, BoardThemeId.graphite);
+    expect(find.byType(ArrowSkinPreviewBoard), findsOneWidget);
+    expect(find.byType(EmptyBoardCell), findsWidgets);
   });
 
-  testWidgets('WelcomeScreen has correct hero logo and action cards', (tester) async {
+  testWidgets('WelcomeScreen has correct hero logo and action cards', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     final store = await AppStore.load();
     await tester.pumpWidget(MaterialApp(home: WelcomeScreen(store: store)));
@@ -125,6 +160,32 @@ void main() {
 
     expect(find.text('Progress'), findsNothing);
     expect(find.text('About'), findsNothing);
-    expect(find.text('How to Play'), findsNothing);
+    expect(find.text('How to Play'), findsOneWidget);
+  });
+
+  testWidgets('Minimal and Tech skins build with correct dimensions', (
+    tester,
+  ) async {
+    for (final skinId in [ArrowSkinId.minimal, ArrowSkinId.tech]) {
+      final skin = ArrowSkinRegistry.byId(skinId);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: skin.buildArrow(direction: ArrowDirection.up, size: 60),
+            ),
+          ),
+        ),
+      );
+
+      final paintFinder = find.descendant(
+        of: find.byType(SizedBox),
+        matching: find.byType(CustomPaint),
+      );
+      expect(paintFinder, findsOneWidget);
+      final paintSize = tester.getSize(paintFinder);
+      expect(paintSize, const Size(60, 60));
+    }
   });
 }

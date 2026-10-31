@@ -16,8 +16,19 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleGoogleSignIn() async {
     setState(() => _isLoading = true);
     try {
-      await AuthService.instance.signInWithGoogle();
-      if (mounted) Navigator.pop(context);
+      final credential = await AuthService.instance.signInWithGoogle();
+      if (credential != null && mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sign-in failed: ${e.toString()}'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -32,14 +43,32 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              const SizedBox(height: 48),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ArrowBoxHeaderIconButton(
+                  icon: Icons.arrow_back_rounded,
+                  tooltip: 'Back',
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              const Spacer(),
               const ArrowBoxTitle(fontSize: 32),
+              const SizedBox(height: 12),
+              Text(
+                'Sign in to save your game progress and sync across devices.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.getTextSecondary(context),
+                  fontSize: 14,
+                ),
+              ),
               const SizedBox(height: 32),
               ArrowBoxPrimaryButton(
                 label: _isLoading ? 'Signing In...' : 'Sign in with Google',
                 icon: Icons.login_rounded,
                 onPressed: _isLoading ? () {} : _handleGoogleSignIn,
               ),
+              const Spacer(flex: 2),
             ],
           ),
         ),

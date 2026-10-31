@@ -9,25 +9,25 @@ enum ArrowDirection {
   left;
 
   (int, int) get vector => switch (this) {
-        ArrowDirection.up => (-1, 0),
-        ArrowDirection.right => (0, 1),
-        ArrowDirection.down => (1, 0),
-        ArrowDirection.left => (0, -1),
-      };
+    ArrowDirection.up => (-1, 0),
+    ArrowDirection.right => (0, 1),
+    ArrowDirection.down => (1, 0),
+    ArrowDirection.left => (0, -1),
+  };
 
   String get directionText => switch (this) {
-        ArrowDirection.up => 'upward',
-        ArrowDirection.right => 'to the right',
-        ArrowDirection.down => 'downward',
-        ArrowDirection.left => 'to the left',
-      };
+    ArrowDirection.up => 'upward',
+    ArrowDirection.right => 'to the right',
+    ArrowDirection.down => 'downward',
+    ArrowDirection.left => 'to the left',
+  };
 
   String get colorName => switch (this) {
-        ArrowDirection.up => 'blue',
-        ArrowDirection.right => 'amber',
-        ArrowDirection.down => 'pink',
-        ArrowDirection.left => 'mint',
-      };
+    ArrowDirection.up => 'blue',
+    ArrowDirection.right => 'amber',
+    ArrowDirection.down => 'pink',
+    ArrowDirection.left => 'mint',
+  };
 }
 
 enum ArrowBoxDifficulty {
@@ -37,11 +37,11 @@ enum ArrowBoxDifficulty {
   ultraHard;
 
   String get label => switch (this) {
-        ArrowBoxDifficulty.easy => 'Easy',
-        ArrowBoxDifficulty.medium => 'Medium',
-        ArrowBoxDifficulty.hard => 'Hard',
-        ArrowBoxDifficulty.ultraHard => 'Ultra Hard',
-      };
+    ArrowBoxDifficulty.easy => 'Easy',
+    ArrowBoxDifficulty.medium => 'Medium',
+    ArrowBoxDifficulty.hard => 'Hard',
+    ArrowBoxDifficulty.ultraHard => 'Ultra Hard',
+  };
 }
 
 class ArrowBoxLevel {
@@ -79,10 +79,12 @@ class ArrowBoxState {
     required this.secondsElapsed,
     required this.hintsUsed,
     required List<List<ArrowDirection?>> history,
-  })  : board = List.unmodifiable(board),
-        history = List.unmodifiable(
-          history.map((snapshot) => List<ArrowDirection?>.unmodifiable(snapshot)),
-        );
+  }) : board = List.unmodifiable(board),
+       history = List.unmodifiable(
+         history.map(
+           (snapshot) => List<ArrowDirection?>.unmodifiable(snapshot),
+         ),
+       );
 
   factory ArrowBoxState.initial({int level = 1}) {
     return ArrowBoxState._(
@@ -106,10 +108,18 @@ class ArrowBoxState {
     final hintsUsed = json['hintsUsed'] ?? 0;
     final board = json['board'];
     final rawHistory = json['history'];
-    if (level is! int || lives is! int || mistakes is! int ||
-        moves is! int || secondsElapsed is! int || hintsUsed is! int ||
-        board is! List || mistakes < 0 || moves < 0 || secondsElapsed < 0 ||
-        hintsUsed < 0 || (rawHistory != null && rawHistory is! List)) {
+    if (level is! int ||
+        lives is! int ||
+        mistakes is! int ||
+        moves is! int ||
+        secondsElapsed is! int ||
+        hintsUsed is! int ||
+        board is! List ||
+        mistakes < 0 ||
+        moves < 0 ||
+        secondsElapsed < 0 ||
+        hintsUsed < 0 ||
+        (rawHistory != null && rawHistory is! List)) {
       throw const FormatException('Invalid saved game');
     }
 
@@ -121,13 +131,17 @@ class ArrowBoxState {
           arrows.add(null);
         } else if (item is String) {
           final matches = ArrowDirection.values.where((d) => d.name == item);
-          if (matches.isEmpty) throw const FormatException('Invalid saved game');
+          if (matches.isEmpty) {
+            throw const FormatException('Invalid saved game');
+          }
           arrows.add(matches.first);
         } else {
           throw const FormatException('Invalid saved game');
         }
       }
-      if (arrows.length != 25) throw const FormatException('Invalid saved game');
+      if (arrows.length != 25) {
+        throw const FormatException('Invalid saved game');
+      }
       return arrows;
     }
 
@@ -154,17 +168,17 @@ class ArrowBoxState {
   }
 
   Map<String, dynamic> toJson() => {
-        'level': level,
-        'lives': lives,
-        'mistakes': mistakes,
-        'moves': moves,
-        'secondsElapsed': secondsElapsed,
-        'hintsUsed': hintsUsed,
-        'history': history
-            .map((snapshot) => snapshot.map((arrow) => arrow?.name).toList())
-            .toList(),
-        'board': board.map((arrow) => arrow?.name).toList(),
-      };
+    'level': level,
+    'lives': lives,
+    'mistakes': mistakes,
+    'moves': moves,
+    'secondsElapsed': secondsElapsed,
+    'hintsUsed': hintsUsed,
+    'history': history
+        .map((snapshot) => snapshot.map((arrow) => arrow?.name).toList())
+        .toList(),
+    'board': board.map((arrow) => arrow?.name).toList(),
+  };
 
   final List<ArrowDirection?> board;
   final int level;
@@ -181,15 +195,15 @@ class ArrowBoxState {
   ArrowBoxState restart() => ArrowBoxState.initial(level: level);
 
   ArrowBoxState withSeconds(int seconds) => ArrowBoxState._(
-        board: board,
-        level: level,
-        lives: lives,
-        mistakes: mistakes,
-        moves: moves,
-        secondsElapsed: seconds,
-        hintsUsed: hintsUsed,
-        history: history,
-      );
+    board: board,
+    level: level,
+    lives: lives,
+    mistakes: mistakes,
+    moves: moves,
+    secondsElapsed: seconds,
+    hintsUsed: hintsUsed,
+    history: history,
+  );
 
   ArrowBoxState undo() {
     if (history.isEmpty) return this;
@@ -230,7 +244,9 @@ class ArrowBoxState {
 
   String get hintMessage {
     final idx = nextEscapeIndex;
-    if (idx == null) return 'No clear path right now. Free a blocking arrow first.';
+    if (idx == null) {
+      return 'No clear path right now. Free a blocking arrow first.';
+    }
     final arrow = board[idx]!;
     return 'The ${arrow.colorName} arrow can escape ${arrow.directionText}.';
   }

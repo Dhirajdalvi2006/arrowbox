@@ -6,6 +6,9 @@ class AuthService {
   AuthService._();
   static final AuthService instance = AuthService._();
 
+  static const String _webClientId =
+      '1083971733030-nh21126hnpinup86fvarmhq39v1nb917.apps.googleusercontent.com';
+
   FirebaseAuth? get _auth {
     try {
       return FirebaseAuth.instance;
@@ -13,11 +16,11 @@ class AuthService {
       return null;
     }
   }
+
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: <String>[
-      'email',
-      'profile',
-    ],
+    clientId: kIsWeb ? _webClientId : null,
+    serverClientId: _webClientId,
+    scopes: <String>['email', 'profile'],
   );
 
   bool get isAvailable => _auth != null;
@@ -30,25 +33,39 @@ class AuthService {
     final auth = _auth;
     if (auth == null) {
       debugPrint('AuthService: Firebase not initialized');
-      return null;
+      throw StateError('Firebase is not initialized. Please restart the app.');
+    }
+
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      throw UnsupportedError(
+        'Google Sign-In is only supported on Android, iOS, or Web. Please run the app on Android or Chrome (Web).',
+      );
     }
 
     try {
-      // Trigger the authentication flow
+      if (kIsWeb) {
+        final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('email');
+        googleProvider.addScope('profile');
+        return await auth.signInWithPopup(googleProvider);
+      }
+
+      // Android / iOS flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null; // User cancelled
 
-      // Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
-      // Create a new credential
+      if (googleAuth.idToken == null && googleAuth.accessToken == null) {
+        throw StateError('Failed to obtain authentication tokens from Google.');
+      }
+
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // Once signed in, return the UserCredential
       return await auth.signInWithCredential(credential);
     } catch (e) {
       debugPrint('Error signing in with Google: $e');
@@ -58,11 +75,11 @@ class AuthService {
 
   Future<void> signOut() async {
     final auth = _auth;
-    if (auth == null) return;
-
     try {
-      await _googleSignIn.signOut();
-      await auth.signOut();
+      if (!kIsWeb && defaultTargetPlatform != TargetPlatform.windows) {
+        await _googleSignIn.signOut();
+      }
+      await auth?.signOut();
     } catch (e) {
       debugPrint('Error signing out: $e');
       rethrow;

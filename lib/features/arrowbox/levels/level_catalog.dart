@@ -37,8 +37,8 @@ class LevelCatalog {
   }
 
   static List<ArrowBoxLevel> _build() => List.unmodifiable([
-        for (var level = 1; level <= size; level++) levelFor(level),
-      ]);
+    for (var level = 1; level <= size; level++) levelFor(level),
+  ]);
 
   static bool _manifestValidated = false;
 
@@ -72,7 +72,8 @@ class LevelCatalog {
       final index = int.tryParse(value);
       if (index == -1) {
         board.add(null);
-      } else if (index != null && index >= 0 &&
+      } else if (index != null &&
+          index >= 0 &&
           index < ArrowDirection.values.length) {
         board.add(ArrowDirection.values[index]);
       } else {
@@ -88,7 +89,8 @@ class LevelCatalog {
   ) {
     final density = board.whereType<ArrowDirection>().length / 25;
     final constraint = 1 - (metrics.initialChoices / 25);
-    return (density * 0.45 + constraint * 0.35 +
+    return (density * 0.45 +
+            constraint * 0.35 +
             (metrics.dependencyDepth / 25).clamp(0.0, 1.0) * 0.20)
         .clamp(0.0, 1.0)
         .toDouble();

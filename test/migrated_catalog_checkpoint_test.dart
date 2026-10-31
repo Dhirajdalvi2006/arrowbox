@@ -28,16 +28,17 @@ void main() {
       expect(layouts.add(layout), isTrue, reason: 'Duplicate layout at $level');
       final values = layout.split(',');
       expect(values, hasLength(25));
-      final board = [
-        for (final value in values)
-          _parseDirection(value, level),
-      ];
+      final board = [for (final value in values) _parseDirection(value, level)];
       final metrics = LevelSolver.analyze(board);
       expect(metrics, isNotNull, reason: 'No solution at $level');
       final solution = metrics!.solution;
       final replay = List<ArrowDirection?>.of(board);
       for (final index in solution) {
-        expect(arrowCanEscape(replay, index), isTrue, reason: 'Bad move at $level');
+        expect(
+          arrowCanEscape(replay, index),
+          isTrue,
+          reason: 'Bad move at $level',
+        );
         replay[index] = null;
       }
       expect(replay.every((arrow) => arrow == null), isTrue);
@@ -69,9 +70,24 @@ void _expectProfile(
   final occupied = board.whereType<ArrowDirection>().length;
   if (difficulty == ArrowBoxDifficulty.easy) {
     expect(occupied, level == 1 ? 8 : inInclusiveRange(8, 20));
-    expect(metrics.initialChoices, inInclusiveRange(level <= 10 ? 2 : 1, level <= 10 ? 12 : 8));
-    expect(metrics.dependencyDepth, greaterThanOrEqualTo(level <= 3 ? 0 : level <= 10 ? 1 : 2));
-    expect(metrics.minimumDirectionCount, greaterThanOrEqualTo(level <= 3 ? 1 : 2));
+    expect(
+      metrics.initialChoices,
+      inInclusiveRange(level <= 10 ? 2 : 1, level <= 10 ? 12 : 8),
+    );
+    expect(
+      metrics.dependencyDepth,
+      greaterThanOrEqualTo(
+        level <= 3
+            ? 0
+            : level <= 10
+            ? 1
+            : 2,
+      ),
+    );
+    expect(
+      metrics.minimumDirectionCount,
+      greaterThanOrEqualTo(level <= 3 ? 1 : 2),
+    );
     return;
   }
   if (difficulty == ArrowBoxDifficulty.medium) {
@@ -82,8 +98,14 @@ void _expectProfile(
     expect(metrics.forcedMoveRatio, greaterThanOrEqualTo(0.05));
     return;
   }
-  expect(occupied, difficulty == ArrowBoxDifficulty.hard ? inInclusiveRange(20, 25) : 25);
-  expect(metrics.initialChoices, inInclusiveRange(1, difficulty == ArrowBoxDifficulty.hard ? 6 : 8));
+  expect(
+    occupied,
+    difficulty == ArrowBoxDifficulty.hard ? inInclusiveRange(20, 25) : 25,
+  );
+  expect(
+    metrics.initialChoices,
+    inInclusiveRange(1, difficulty == ArrowBoxDifficulty.hard ? 6 : 8),
+  );
   expect(metrics.dependencyDepth, greaterThanOrEqualTo(3));
   expect(metrics.minimumDirectionCount, greaterThanOrEqualTo(3));
   expect(metrics.forcedMoveRatio, greaterThanOrEqualTo(0.05));

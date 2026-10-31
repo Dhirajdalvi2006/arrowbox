@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Reference Dark Palette (Default)
-  static const darkBackground = Color(0xFF020810);
-  static const darkSecondaryBackground = Color(0xFF051020);
-  static const darkCard = Color(0xFF0A1628);
-  static const darkSurfaceElevated = Color(0xFF0E1E35);
-  static const darkTextPrimary = Color(0xFFF4F7FF);
-  static const darkTextSecondary = Color(0xFFA8B9D5);
+  static const darkBackground = Color(0xFF070D1A);
+  static const darkSecondaryBackground = Color(0xFF0A1426);
+  static const darkCard = Color(0xFF101C31);
+  static const darkSurfaceElevated = Color(0xFF14223B);
+  static const darkTextPrimary = Color(0xFFFFFFFF);
+  static const darkTextSecondary = Color(0xFF9BAECC);
   static const darkTextMuted = Color(0xFF5D7196);
-  static const darkBorder = Color(0xFF122540);
+  static const darkBorder = Color(0xFF1C2D4A);
   static const darkBorderSubtle = Color(0x22358BFF);
 
   // Reference Light Palette
@@ -30,11 +30,12 @@ class AppColors {
   static const border = darkBorder;
 
   // Accents
-  static const primary = Color(0xFF247BFF);
-  static const primaryBright = Color(0xFF358BFF);
+  static const primary = Color(0xFF1685FF);
+  static const primaryBright = Color(0xFF39D5FF);
   static const primaryLight = Color(0xFFE6F0FF);
   static const primaryDark = Color(0xFF105CD6);
-  static const cyan = Color(0xFF21D4FD);
+  static const cyan = Color(0xFF39D5FF);
+  static const violet = Color(0xFF965CFF);
 
   // Status
   static const success = Color(0xFF21D98B);

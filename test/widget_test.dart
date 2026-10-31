@@ -28,10 +28,12 @@ void main() {
   ) async {
     final pending = Completer<AppStore>();
 
-    await tester.pumpWidget(ArrowBoxStartup(
-      storeLoader: () => pending.future,
-      firebaseInitializer: () async {},
-    ));
+    await tester.pumpWidget(
+      ArrowBoxStartup(
+        storeLoader: () => pending.future,
+        firebaseInitializer: () async {},
+      ),
+    );
     await tester.pump();
 
     expect(find.text('Preparing your puzzle...'), findsOneWidget);
@@ -118,20 +120,7 @@ void main() {
     await tester.pumpWidget(ArrowBoxApp(store: store));
     await tester.pumpAndSettle();
 
-    expect(find.byType(ArrowBoxHeroArtwork), findsNothing);
-
-    final logo = tester.widget<Image>(
-      find
-          .byWidgetPredicate(
-            (widget) =>
-                widget is Image &&
-                widget.image is AssetImage &&
-                (widget.image as AssetImage).assetName ==
-                    'assets/images/arrowbox_cube_logo.png',
-          )
-          .first,
-    );
-    expect(logo.fit, BoxFit.contain);
+    expect(find.byType(ArrowBoxHeroArtwork), findsOneWidget);
   });
 
   testWidgets('Landing screen renders title, tagline and action buttons', (
@@ -144,9 +133,6 @@ void main() {
     expect(find.byType(ArrowBoxTitle), findsWidgets);
     expect(find.text('Think. Aim. Escape.'), findsOneWidget);
     expect(find.text('Play Now'), findsOneWidget);
-    expect(find.text('Progress'), findsOneWidget);
-    expect(find.text('How to Play'), findsOneWidget);
-    expect(find.text('About'), findsOneWidget);
   });
 
   testWidgets('Landing screen fits a narrow viewport', (tester) async {
@@ -235,9 +221,7 @@ void main() {
     expect(arrowEscapeOffset(ArrowDirection.up, 72), const Offset(0, -72));
   });
 
-  testWidgets('Gameplay screen renders Level 3 with hint and controls', (
-    tester,
-  ) async {
+  testWidgets('Gameplay screen renders Level 3 with controls', (tester) async {
     final store = await AppStore.load();
     final game = ArrowBoxState.initial(level: 3);
 
@@ -251,10 +235,7 @@ void main() {
     expect(find.text('Level 3'), findsOneWidget);
     expect(find.text('EASY'), findsOneWidget);
     expect(find.text('0 mistakes'), findsOneWidget);
-    expect(find.text('Hint'), findsWidgets);
-    expect(find.textContaining('arrow can escape'), findsOneWidget);
-    expect(find.text('Undo'), findsOneWidget);
-    expect(find.text('Restart'), findsOneWidget);
+    expect(find.text('Restart Level'), findsOneWidget);
   });
 
   testWidgets('Gameplay screen fits a narrow viewport', (tester) async {
@@ -276,54 +257,6 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Undo restores an escaping tile for immediate input', (
-    tester,
-  ) async {
-    final store = await AppStore.load();
-    final initialState = ArrowBoxState.initial(level: 1);
-    final escapeIndex = initialState.nextEscapeIndex!;
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: ArrowBoxScreen(store: store, initialState: initialState),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    Finder escapeTileFinder() => find.byWidgetPredicate(
-      (widget) => widget is GradientArrowTile && widget.index == escapeIndex,
-    );
-
-    tester.widget<GradientArrowTile>(escapeTileFinder()).onTap();
-    await tester.pump(const Duration(milliseconds: 50));
-    expect(
-      tester.widget<GradientArrowTile>(escapeTileFinder()).isEscaping,
-      isTrue,
-    );
-
-    final undoButton = find.ancestor(
-      of: find.text('Undo'),
-      matching: find.byType(GameplayControlButton),
-    );
-    tester.widget<GameplayControlButton>(undoButton).onTap();
-    await tester.pumpAndSettle();
-
-    expect(escapeTileFinder(), findsOneWidget);
-    expect(
-      tester.widget<GradientArrowTile>(escapeTileFinder()).isEscaping,
-      isFalse,
-    );
-
-    tester.widget<GradientArrowTile>(escapeTileFinder()).onTap();
-    await tester.pump(const Duration(milliseconds: 50));
-    expect(
-      tester.widget<GradientArrowTile>(escapeTileFinder()).isEscaping,
-      isTrue,
-    );
-
-    await tester.pumpAndSettle();
-  });
-
   testWidgets('Completion dialog text has no decoration in both themes', (
     tester,
   ) async {
@@ -339,6 +272,7 @@ void main() {
               moves: 6,
               mistakes: 0,
               hintsUsed: 0,
+              lives: 3,
               stars: 3,
               seconds: 42,
               onNextLevel: () {},
@@ -366,14 +300,14 @@ void main() {
     await tester.pumpWidget(ArrowBoxApp(store: store));
     await tester.pumpAndSettle();
     expect(
-      Theme.of(tester.element(find.text('Play Now'))).brightness,
+      Theme.of(tester.element(find.text('Play Adventure'))).brightness,
       Brightness.light,
     );
 
     await store.setThemeMode(ThemeMode.dark);
     await tester.pumpAndSettle();
     expect(
-      Theme.of(tester.element(find.text('Play Now'))).brightness,
+      Theme.of(tester.element(find.text('Play Adventure'))).brightness,
       Brightness.dark,
     );
   });

@@ -45,23 +45,27 @@ void main() {
 
   test('same seed independently regenerates the same replayable board', () {
     BoardGenerationResult generate() => generateSolvableBoardOutcome(
-          arrowCount: 20,
-          seed: 20261028,
-          minimumInitialChoices: 1,
-          maximumInitialChoices: 6,
-          minimumDependencyDepth: 3,
-          minimumDirectionCount: 3,
-          minimumForcedMoveRatio: 0.05,
-          maxAttempts: 1000,
-          maxNodesPerAttempt: 50000,
-        );
+      arrowCount: 20,
+      seed: 20261028,
+      minimumInitialChoices: 1,
+      maximumInitialChoices: 6,
+      minimumDependencyDepth: 3,
+      minimumDirectionCount: 3,
+      minimumForcedMoveRatio: 0.05,
+      maxAttempts: 1000,
+      maxNodesPerAttempt: 50000,
+    );
 
     final first = generate();
     final second = generate();
     expect(first.status, BoardGenerationStatus.success);
     expect(second.status, BoardGenerationStatus.success);
-    final firstLayout = first.board!.map((arrow) => arrow?.index ?? -1).join(',');
-    final secondLayout = second.board!.map((arrow) => arrow?.index ?? -1).join(',');
+    final firstLayout = first.board!
+        .map((arrow) => arrow?.index ?? -1)
+        .join(',');
+    final secondLayout = second.board!
+        .map((arrow) => arrow?.index ?? -1)
+        .join(',');
     expect(secondLayout, firstLayout);
 
     for (final board in [first.board!, second.board!]) {

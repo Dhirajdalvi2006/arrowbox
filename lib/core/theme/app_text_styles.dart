@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'app_colors.dart';
 
 class AppTextStyles {
@@ -48,8 +49,5 @@ class AppTextStyles {
     color: Colors.white,
   );
 
-  static const chipLabel = TextStyle(
-    fontSize: 13,
-    fontWeight: FontWeight.w600,
-  );
+  static const chipLabel = TextStyle(fontSize: 13, fontWeight: FontWeight.w600);
 }

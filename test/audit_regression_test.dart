@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -85,6 +86,7 @@ class AuditFakePrefs implements SharedPreferences {
     _data.clear();
     return true;
   }
+
   @override
   Future<bool> commit() async => true;
   @override
@@ -119,11 +121,23 @@ void main() {
 
       // Verify final state: soundEnabled should be true (from reset),
       // hapticsEnabled should be false (from second update).
-      expect(store.soundEnabled, isTrue, reason: 'Reset should have overwritten the first update');
-      expect(store.hapticsEnabled, isFalse, reason: 'Second update should have happened after reset');
+      expect(
+        store.soundEnabled,
+        isTrue,
+        reason: 'Reset should have overwritten the first update',
+      );
+      expect(
+        store.hapticsEnabled,
+        isFalse,
+        reason: 'Second update should have happened after reset',
+      );
 
       // Verify persisted state
-      expect(fakePrefs.getBool('soundEnabled'), isNull, reason: 'Reset should have removed the key');
+      expect(
+        fakePrefs.getBool('soundEnabled'),
+        isNull,
+        reason: 'Reset should have removed the key',
+      );
       expect(fakePrefs.getBool('hapticsEnabled'), isFalse);
     });
 
@@ -155,16 +169,16 @@ void main() {
   });
 
   group('ArrowBox Animation Audit', () {
-    testWidgets('animation ID prevents premature removal after undo and re-tap', (tester) async {
+    testWidgets('animation ID prevents premature removal after undo and re-tap', (
+      tester,
+    ) async {
       // Build ArrowBoxScreen
       final game = ArrowBoxState.initial(level: 1);
-      await tester.binding.setSurfaceSize(const Size(1024, 768));
-      await tester.pumpWidget(MaterialApp(
-        home: ArrowBoxScreen(
-          store: store,
-          initialState: game,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ArrowBoxScreen(store: store, initialState: game),
         ),
-      ));
+      );
 
       // 1. Tap an arrow to start exit animation
       await tester.tap(find.byType(GradientArrowTile).first);
@@ -190,7 +204,10 @@ void main() {
       // or the tile would disappear/snap.
 
       // We check that the GradientArrowTile with isEscaping: true still exists
-      expect(find.byWidgetPredicate((w) => w is GradientArrowTile && w.isEscaping), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((w) => w is GradientArrowTile && w.isEscaping),
+        findsOneWidget,
+      );
     });
   });
 }

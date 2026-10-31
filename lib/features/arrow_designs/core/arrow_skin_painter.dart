@@ -17,7 +17,12 @@ class ArrowSkinPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
+    final side = size.shortestSide;
+    final rect = Rect.fromCenter(
+      center: Offset(size.width / 2, size.height / 2),
+      width: side,
+      height: side,
+    );
     final radius = style == ArrowPainterStyle.tech ? 9.0 : 14.0;
     final path = Path()
       ..addRRect(

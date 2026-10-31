@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../arrow_designs/arrow_designs.dart';
+import 'arrowbox_logic.dart';
 
 Offset arrowEscapeOffset(ArrowDirection direction, double distance) {
   final (rowStep, columnStep) = direction.vector;
@@ -55,7 +56,7 @@ class _GradientArrowTileState extends State<GradientArrowTile>
     super.initState();
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 400),
     );
     _escapeController = AnimationController(
       vsync: this,
@@ -78,7 +79,11 @@ class _GradientArrowTileState extends State<GradientArrowTile>
     );
 
     if (widget.highlighted) {
-      _pulseController.repeat(reverse: true);
+      _pulseController.forward(from: 0.0).then((_) {
+        if (mounted && widget.highlighted) {
+          _pulseController.forward(from: 0.0);
+        }
+      });
     }
     if (widget.isEscaping) {
       _escapeController.forward();
@@ -97,7 +102,11 @@ class _GradientArrowTileState extends State<GradientArrowTile>
   void didUpdateWidget(covariant GradientArrowTile oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.highlighted && !oldWidget.highlighted) {
-      _pulseController.repeat(reverse: true);
+      _pulseController.forward(from: 0.0).then((_) {
+        if (mounted && widget.highlighted) {
+          _pulseController.forward(from: 0.0);
+        }
+      });
     } else if (!widget.highlighted && oldWidget.highlighted) {
       _pulseController.stop();
       _pulseController.reset();
@@ -128,29 +137,6 @@ class _GradientArrowTileState extends State<GradientArrowTile>
 
   @override
   Widget build(BuildContext context) {
-    final (icon, gradientColors, glowColor) = switch (widget.direction) {
-      ArrowDirection.up => (
-        Icons.arrow_upward_rounded,
-        AppColors.arrowUpGradient,
-        const Color(0x7721D4FD),
-      ),
-      ArrowDirection.right => (
-        Icons.arrow_forward_rounded,
-        AppColors.arrowRightGradient,
-        const Color(0x77FFB547),
-      ),
-      ArrowDirection.down => (
-        Icons.arrow_downward_rounded,
-        AppColors.arrowDownGradient,
-        const Color(0x77FF5277),
-      ),
-      ArrowDirection.left => (
-        Icons.arrow_back_rounded,
-        AppColors.arrowLeftGradient,
-        const Color(0x7721D98B),
-      ),
-    };
-
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return AnimatedBuilder(
@@ -200,73 +186,19 @@ class _GradientArrowTileState extends State<GradientArrowTile>
                   child: InkWell(
                     borderRadius: BorderRadius.circular(14),
                     onTap: widget.isEscaping ? null : widget.onTap,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: gradientColors,
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: widget.highlighted
-                              ? Color.lerp(
-                                  Colors.white,
-                                  const Color(0xFF21D4FD),
-                                  _pulseController.value,
-                                )!
-                              : Colors.white.withValues(alpha: 0.35),
-                          width: widget.highlighted ? 2.5 : 1.2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: glowColor.withValues(alpha: 0.4),
-                            blurRadius: 12,
-                            spreadRadius: 1,
-                            offset: const Offset(0, 4),
-                          ),
-                          BoxShadow(
-                            color: Colors.white.withValues(alpha: 0.3),
-                            blurRadius: 0,
-                            spreadRadius: -2,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 2,
-                            left: 4,
-                            right: 4,
-                            child: Container(
-                              height: 12,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.white.withValues(alpha: 0.4),
-                                    Colors.white.withValues(alpha: 0.0),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned.fill(
-                            child: LayoutBuilder(
-                              builder: (context, constraints) =>
-                                  widget.skin.buildArrow(
-                                    direction: widget.direction,
-                                    size: constraints.biggest.shortestSide,
-                                    highlighted: widget.highlighted,
-                                    isInteractive: true,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final rawSize = constraints.biggest.shortestSide;
+                        final size = (rawSize <= 0.0 || rawSize.isNaN)
+                            ? 60.0
+                            : rawSize;
+                        return widget.skin.buildArrow(
+                          direction: widget.direction,
+                          size: size,
+                          highlighted: widget.highlighted,
+                          isInteractive: true,
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -279,7 +211,7 @@ class _GradientArrowTileState extends State<GradientArrowTile>
   }
 }
 
-/// Empty Board Cell with centered dot matching Reference 1
+/// Empty Board Cell matching subtle requirement
 class EmptyBoardCell extends StatelessWidget {
   const EmptyBoardCell({this.theme, super.key});
 
@@ -294,33 +226,23 @@ class EmptyBoardCell extends StatelessWidget {
         (isDark ? const Color(0xFF0A1628) : const Color(0xFFE2EAF4));
     final borderColor =
         boardTheme?.border ??
-        (isDark ? const Color(0xFF142640) : const Color(0xFFD0DCED));
-    final dotColor = (boardTheme?.dot ?? AppColors.getBoardDot(context))
-        .withValues(alpha: 0.4);
+        (isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08));
 
     return Container(
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor, width: 1),
-      ),
-      child: Center(
-        child: Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(
-            color: dotColor,
-            shape: BoxShape.circle,
-            boxShadow: [
-              if (isDark)
-                BoxShadow(
-                  color: dotColor.withValues(alpha: 0.3),
-                  blurRadius: 4,
-                  spreadRadius: 1,
-                ),
-            ],
-          ),
+        border: Border.all(
+          color: borderColor,
+          width: 1.2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
     );
   }
@@ -429,7 +351,7 @@ class GameplayHintPanel extends StatelessWidget {
   }
 }
 
-/// Gameplay control button with optional badge count (e.g. Undo 2, Hint 3)
+/// Gameplay control button
 class GameplayControlButton extends StatelessWidget {
   const GameplayControlButton({
     required this.icon,
@@ -455,70 +377,65 @@ class GameplayControlButton extends StatelessWidget {
         ? AppColors.primaryBright
         : AppColors.getTextMuted(context);
 
-    return Expanded(
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.getCard(context),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          height: 64,
+          decoration: BoxDecoration(
+            color: AppColors.getCard(context),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.getBorder(context), width: 1.1),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: AppColors.getBorder(context),
-                width: 1.1,
+              onTap: enabled ? onTap : null,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, color: iconColor, size: 22),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(18),
-                onTap: enabled ? onTap : null,
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(icon, color: iconColor, size: 22),
-                      const SizedBox(height: 4),
-                      Text(
-                        label,
-                        style: TextStyle(
-                          color: color,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+          ),
+        ),
+        if (badgeCount != null)
+          Positioned(
+            top: 6,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1D5CC9),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '$badgeCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
             ),
           ),
-          if (badgeCount != null)
-            Positioned(
-              top: 6,
-              right: 12,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF1D5CC9),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
+      ],
     );
   }
 }

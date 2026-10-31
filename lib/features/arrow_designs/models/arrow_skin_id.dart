@@ -9,5 +9,5 @@ enum ArrowSkinId {
   fantasy,
   cyber,
   voidStyle,
-  aurora
+  aurora,
 }

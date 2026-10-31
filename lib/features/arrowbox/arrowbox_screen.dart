@@ -179,11 +179,20 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
   }
 
   void _captureMove(int index) {
-    if (_paused || _game.isGameOver || _game.isCleared) return;
+    debugPrint('_captureMove called for index $index');
+    if (_paused || _game.isGameOver || _game.isCleared) {
+      debugPrint(
+        '_captureMove blocked: paused=$_paused, over=${_game.isGameOver}, cleared=${_game.isCleared}',
+      );
+      return;
+    }
     if (index < 0 ||
         index >= _game.board.length ||
         _game.board[index] == null ||
         _exiting.containsKey(index)) {
+      debugPrint(
+        '_captureMove invalid: boardVal=${_game.board[index]}, exiting=${_exiting.containsKey(index)}',
+      );
       return;
     }
     final capturedAt = _inputClock.elapsed;
@@ -192,7 +201,10 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
       session: _session,
       capturedAt: capturedAt,
     );
-    if (!accepted) return;
+    if (!accepted) {
+      debugPrint('_captureMove not accepted by queue');
+      return;
+    }
     _animationTiming.recordValidTap(capturedAt);
     _hintIndex = null;
     _drainMoveQueue();
@@ -214,6 +226,7 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
   }
 
   Future<void> _executeQueuedMove(ArrowBoxInputRequest request) async {
+    debugPrint('_executeQueuedMove started for ${request.index}');
     if (!mounted || request.session != _session) return;
     if (_paused || _game.isGameOver || _game.isCleared) return;
     if (request.index < 0 ||
@@ -223,7 +236,9 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
     }
     if (!_startRecorded) {
       _startRecorded = true;
+      debugPrint('_executeQueuedMove recording game started');
       await widget.store.recordGameStarted();
+      debugPrint('_executeQueuedMove game started recorded');
       if (!mounted || request.session != _session) return;
     }
     if (!_timerStarted) {
@@ -348,6 +363,7 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
         moves: _game.moves,
         mistakes: _game.mistakes,
         hintsUsed: _game.hintsUsed,
+        lives: _game.lives,
         stars: _completionStars,
         seconds: _seconds,
         onNextLevel: () async {
@@ -694,9 +710,14 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
                                 child: LayoutBuilder(
                                   builder: (context, boardConstraints) {
                                     const gap = 10.0;
-                                    final tileSize =
+                                    final calculatedTileSize =
                                         (boardConstraints.maxWidth - gap * 4) /
                                         5;
+                                    final tileSize =
+                                        (calculatedTileSize <= 0.0 ||
+                                            calculatedTileSize.isNaN)
+                                        ? 60.0
+                                        : calculatedTileSize;
                                     final indexes = [
                                       for (var index = 0; index < 25; index++)
                                         index,
@@ -776,43 +797,36 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
 
                               const SizedBox(height: 24),
 
-                              if (widget.store.hintsEnabled)
-                                GameplayHintPanel(
-                                  message: _game.hintMessage,
-                                  onTapHint: _showHint,
-                                ),
-
-                              const SizedBox(height: 24),
-
                               Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
+                                  horizontal: 24,
                                 ),
                                 child: Row(
                                   children: [
-                                    GameplayControlButton(
-                                      icon: Icons.undo_rounded,
-                                      label: 'Undo',
-                                      enabled:
-                                          !_busy && _game.history.isNotEmpty,
-                                      onTap: _undo,
+                                    Expanded(
+                                      child: GameplayControlButton(
+                                        icon: Icons.refresh_rounded,
+                                        label: 'Restart Level',
+                                        enabled: !_busy,
+                                        onTap: _restart,
+                                      ),
                                     ),
                                     const SizedBox(width: 16),
-                                    GameplayControlButton(
-                                      icon: Icons.refresh_rounded,
-                                      label: 'Restart',
-                                      enabled: !_busy,
-                                      onTap: _restart,
-                                    ),
-                                    const SizedBox(width: 16),
-                                    GameplayControlButton(
-                                      icon: Icons.lightbulb_rounded,
-                                      label: 'Hint',
-                                      badgeCount: _game.hintsUsed < 3
-                                          ? 3 - _game.hintsUsed
-                                          : null,
-                                      enabled: !_busy && _game.hintsUsed < 3,
-                                      onTap: _showHint,
+                                    Expanded(
+                                      child: GameplayControlButton(
+                                        icon: Icons.lightbulb_rounded,
+                                        label: 'Hint',
+                                        badgeCount: _game.hintsUsed < 3
+                                            ? (3 - _game.hintsUsed)
+                                            : null,
+                                        enabled:
+                                            !_busy &&
+                                            !_game.isGameOver &&
+                                            !_game.isCleared &&
+                                            _game.hintsUsed < 3 &&
+                                            _game.nextEscapeIndex != null,
+                                        onTap: _showHint,
+                                      ),
                                     ),
                                   ],
                                 ),

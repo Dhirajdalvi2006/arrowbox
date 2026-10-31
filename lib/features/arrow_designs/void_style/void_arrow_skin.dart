@@ -11,7 +11,8 @@ class VoidArrowSkin extends ArrowSkin {
   @override
   String get name => 'Void';
   @override
-  String get description => 'Deep, shadowy silhouette with a faint, ominous inner glow.';
+  String get description =>
+      'Deep, shadowy silhouette with a faint, ominous inner glow.';
 
   @override
   Widget buildArrow({
@@ -20,7 +21,9 @@ class VoidArrowSkin extends ArrowSkin {
     bool highlighted = false,
     bool isInteractive = false,
   }) {
-    final color = highlighted ? const Color(0xFF6A1B9A) : const Color(0xFF263238);
+    final color = highlighted
+        ? const Color(0xFF6A1B9A)
+        : const Color(0xFF263238);
     return Container(
       width: size,
       height: size,
@@ -37,7 +40,11 @@ class VoidArrowSkin extends ArrowSkin {
         ],
       ),
       child: Center(
-        child: Icon(directionIcon(direction), size: size * 0.5, color: highlighted ? Colors.white : color),
+        child: Icon(
+          directionIcon(direction),
+          size: size * 0.5,
+          color: highlighted ? Colors.white : color,
+        ),
       ),
     );
   }

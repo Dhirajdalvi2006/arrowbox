@@ -41,7 +41,6 @@ class _ArrowBoxPressScaleState extends State<ArrowBoxPressScale> {
   }
 }
 
-
 /// Distinctive ArrowBox branding Title with dual-color "Arrow" (White/Dark) and "Box" (Blue)
 class ArrowBoxTitle extends StatelessWidget {
   const ArrowBoxTitle({
@@ -131,16 +130,19 @@ class ArrowBoxLogoMark extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(size * 0.22),
         child: Image.asset(
-          'assets/images/arrowbox_cube_logo.png',
+          'assets/images/app_logo.png',
           width: size,
           height: size,
           fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) => Tooltip(
-            message: 'ArrowBox logo asset failed to load',
-            child: ColoredBox(
+          errorBuilder: (context, error, stackTrace) => Image.asset(
+            'assets/images/arrowbox_cube_logo.png',
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) => ColoredBox(
               color: const Color(0xFF070D1A),
               child: Icon(
-                Icons.broken_image_outlined,
+                Icons.games_rounded,
                 color: AppColors.cyan,
                 size: size * 0.5,
               ),

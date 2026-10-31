@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../core/theme/app_colors.dart';
 
 class SplashArrowTile extends StatelessWidget {
@@ -27,7 +28,9 @@ class SplashArrowTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF0A1628),
             borderRadius: BorderRadius.circular(size * 0.2),
-            border: Border.all(color: AppColors.primaryBright.withValues(alpha: 0.3)),
+            border: Border.all(
+              color: AppColors.primaryBright.withValues(alpha: 0.3),
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.3),

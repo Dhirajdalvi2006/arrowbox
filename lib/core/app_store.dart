@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/arrowbox/arrowbox_logic.dart';
 import '../features/arrow_designs/arrow_designs.dart';
+import 'services/auth_service.dart';
+import 'services/cloud_sync_service.dart';
 
 class AppStore extends ChangeNotifier {
   @visibleForTesting
@@ -99,6 +102,7 @@ class AppStore extends ChangeNotifier {
 
   final SharedPreferences _prefs;
   Future<void> _writeQueue = Future<void>.value();
+  StreamSubscription? _authSubscription;
 
   int unlockedLevel;
   Set<int> completedLevels;
@@ -121,6 +125,11 @@ class AppStore extends ChangeNotifier {
       savedGame != null && !savedGame!.isCleared && !savedGame!.isGameOver;
 
   bool get hasProgress => completedLevels.isNotEmpty || unlockedLevel > 1;
+
+  bool get isAdmin {
+    final user = AuthService.instance.currentUser;
+    return user?.email?.trim().toLowerCase() == 'dalvi3473@gmail.com';
+  }
 
   static Future<AppStore> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -158,7 +167,26 @@ class AppStore extends ChangeNotifier {
     }
 
     store.savedGame = store._mostAdvancedSavedGame();
+    store.initCloudSync();
     return store;
+  }
+
+  void initCloudSync() {
+    try {
+      _authSubscription?.cancel();
+      _authSubscription = AuthService.instance.authStateChanges.listen((user) {
+        notifyListeners();
+        if (user != null) {
+          CloudSyncService.instance.syncStore(this, user.uid);
+        }
+      });
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> saveGame(ArrowBoxState state) {
@@ -217,6 +245,123 @@ class AppStore extends ChangeNotifier {
     }
   }
 
+  Map<String, dynamic> toSyncJson() {
+    return {
+      'unlockedLevel': unlockedLevel,
+      'completedLevels': completedLevels.toList()..sort(),
+      'levelStars': levelStars.map((k, v) => MapEntry(k.toString(), v)),
+      'gamesPlayed': gamesPlayed,
+      'totalMistakes': totalMistakes,
+      'soundEnabled': soundEnabled,
+      'musicEnabled': musicEnabled,
+      'musicVolume': musicVolume,
+      'hapticsEnabled': hapticsEnabled,
+      'hintsEnabled': hintsEnabled,
+      'confirmRestart': confirmRestart,
+      'themeMode': themeMode.index,
+      'arrowSkinId': arrowSkinId.name,
+      'boardThemeId': boardThemeId.name,
+      'lastSyncedAt': DateTime.now().toIso8601String(),
+    };
+  }
+
+  Future<void> mergeFromCloud(Map<String, dynamic> cloud) {
+    return _enqueueWrite(() async {
+      final cloudUnlocked = cloud['unlockedLevel'] as int?;
+      if (cloudUnlocked != null && cloudUnlocked > unlockedLevel) {
+        unlockedLevel = _validLevel(cloudUnlocked);
+      }
+
+      final rawCompleted = cloud['completedLevels'];
+      if (rawCompleted is List) {
+        final parsed = rawCompleted
+            .map((e) => e is int ? e : int.tryParse(e.toString()))
+            .whereType<int>()
+            .toSet();
+        completedLevels = {...completedLevels, ...parsed};
+      }
+
+      final rawStars = cloud['levelStars'];
+      if (rawStars is Map) {
+        for (final entry in rawStars.entries) {
+          final level = int.tryParse(entry.key.toString());
+          final stars = entry.value is int
+              ? entry.value as int
+              : int.tryParse(entry.value.toString());
+          if (level != null && stars != null) {
+            final current = levelStars[level] ?? 0;
+            if (stars > current) {
+              levelStars[level] = stars;
+            }
+          }
+        }
+      }
+
+      final cloudGames = cloud['gamesPlayed'] as int?;
+      if (cloudGames != null && cloudGames > gamesPlayed) {
+        gamesPlayed = cloudGames;
+      }
+
+      final cloudMistakes = cloud['totalMistakes'] as int?;
+      if (cloudMistakes != null && cloudMistakes > totalMistakes) {
+        totalMistakes = cloudMistakes;
+      }
+
+      // Sync preferences: Arrow skin, Board theme, ThemeMode, Audio, Controls
+      final skinName = cloud['arrowSkinId'] as String?;
+      if (skinName != null) {
+        arrowSkinId = _validSkinId(skinName);
+      }
+
+      final themeName = cloud['boardThemeId'] as String?;
+      if (themeName != null) {
+        boardThemeId = _validBoardThemeId(themeName);
+      }
+
+      final modeIndex = cloud['themeMode'] as int?;
+      if (modeIndex != null) {
+        themeMode = _validThemeMode(modeIndex);
+      }
+
+      if (cloud['soundEnabled'] is bool) {
+        soundEnabled = cloud['soundEnabled'] as bool;
+      }
+      if (cloud['musicEnabled'] is bool) {
+        musicEnabled = cloud['musicEnabled'] as bool;
+      }
+      if (cloud['musicVolume'] is num) {
+        musicVolume = (cloud['musicVolume'] as num).toDouble();
+      }
+      if (cloud['hapticsEnabled'] is bool) {
+        hapticsEnabled = cloud['hapticsEnabled'] as bool;
+      }
+      if (cloud['hintsEnabled'] is bool) {
+        hintsEnabled = cloud['hintsEnabled'] as bool;
+      }
+      if (cloud['confirmRestart'] is bool) {
+        confirmRestart = cloud['confirmRestart'] as bool;
+      }
+
+      // Persist merged state to local storage
+      await _persistAll();
+      notifyListeners();
+    });
+  }
+
+  Future<void> _persistAll() async {
+    await _persistProgress();
+    await _prefs.setInt('gamesPlayed', gamesPlayed);
+    await _prefs.setInt('themeMode', themeMode.index);
+    await _prefs.setString('arrowSkinId', arrowSkinId.name);
+    await _prefs.setString('boardThemeId', boardThemeId.name);
+    await _prefs.setBool('soundEnabled', soundEnabled);
+    await _prefs.setBool('musicEnabled', musicEnabled);
+    await _prefs.setDouble('musicVolume', musicVolume);
+    await _prefs.setBool('hapticsEnabled', hapticsEnabled);
+    await _prefs.setBool('hintsEnabled', hintsEnabled);
+    await _prefs.setBool('confirmRestart', confirmRestart);
+  }
+
   Future<void> recordCompletion(int level, int mistakes, {int hintsUsed = 0}) {
     return _enqueueWrite(() async {
       completedLevels = {...completedLevels, level};
@@ -232,6 +377,7 @@ class AppStore extends ChangeNotifier {
       }
       totalMistakes += mistakes;
       await _persistProgress();
+      CloudSyncService.instance.scheduleUpload(this);
       notifyListeners();
     });
   }
@@ -240,6 +386,7 @@ class AppStore extends ChangeNotifier {
     return _enqueueWrite(() async {
       gamesPlayed++;
       await _prefs.setInt('gamesPlayed', gamesPlayed);
+      CloudSyncService.instance.scheduleUpload(this);
       notifyListeners();
     });
   }
@@ -248,6 +395,7 @@ class AppStore extends ChangeNotifier {
     return _enqueueWrite(() async {
       themeMode = value;
       await _prefs.setInt('themeMode', value.index);
+      CloudSyncService.instance.scheduleUpload(this);
       notifyListeners();
     });
   }
@@ -256,6 +404,7 @@ class AppStore extends ChangeNotifier {
     return _enqueueWrite(() async {
       arrowSkinId = value;
       await _prefs.setString('arrowSkinId', value.name);
+      CloudSyncService.instance.scheduleUpload(this);
       notifyListeners();
     });
   }
@@ -264,6 +413,7 @@ class AppStore extends ChangeNotifier {
     return _enqueueWrite(() async {
       boardThemeId = value;
       await _prefs.setString('boardThemeId', value.name);
+      CloudSyncService.instance.scheduleUpload(this);
       notifyListeners();
     });
   }
@@ -274,6 +424,7 @@ class AppStore extends ChangeNotifier {
       if (key == 'musicVolume') {
         musicVolume = value;
       }
+      CloudSyncService.instance.scheduleUpload(this);
       notifyListeners();
     });
   }
@@ -293,6 +444,7 @@ class AppStore extends ChangeNotifier {
         case 'confirmRestart':
           confirmRestart = value;
       }
+      CloudSyncService.instance.scheduleUpload(this);
       notifyListeners();
     });
   }
@@ -313,6 +465,7 @@ class AppStore extends ChangeNotifier {
       await _prefs.remove('levelStars');
       await _prefs.remove('savedGame');
       await _prefs.remove('savedGames');
+      CloudSyncService.instance.scheduleUpload(this);
       notifyListeners();
     });
   }
@@ -341,6 +494,7 @@ class AppStore extends ChangeNotifier {
         await _prefs.remove(key);
       }
       await _prefs.remove('themeMode');
+      CloudSyncService.instance.scheduleUpload(this);
       notifyListeners();
     });
   }

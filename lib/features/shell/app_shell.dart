@@ -27,8 +27,11 @@ class _AppShellState extends State<AppShell> {
       ),
       _LazyTab(
         active: _index == 1,
-        builder: () =>
-            LevelSelectionScreen(store: widget.store, embedded: true),
+        builder: () => LevelSelectionScreen(
+          store: widget.store,
+          embedded: true,
+          onBackPressed: () => setState(() => _index = 0),
+        ),
       ),
       _LazyTab(
         active: _index == 2,

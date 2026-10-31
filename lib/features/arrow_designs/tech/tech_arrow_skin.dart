@@ -23,18 +23,20 @@ class TechArrowSkin extends ArrowSkin {
     bool isInteractive = false,
   }) {
     final color = directionColor(direction);
-    return CustomPaint(
-      size: Size.square(size),
-      painter: ArrowSkinPainter(
-        direction: direction,
-        color: color,
-        style: ArrowPainterStyle.tech,
-        highlighted: highlighted,
-      ),
-      child: skinIcon(
-        direction: direction,
-        size: size * .58,
-        color: Colors.white,
+    return SizedBox.square(
+      dimension: size,
+      child: CustomPaint(
+        painter: ArrowSkinPainter(
+          direction: direction,
+          color: color,
+          style: ArrowPainterStyle.tech,
+          highlighted: highlighted,
+        ),
+        child: skinIcon(
+          direction: direction,
+          size: size * .58,
+          color: Colors.white,
+        ),
       ),
     );
   }

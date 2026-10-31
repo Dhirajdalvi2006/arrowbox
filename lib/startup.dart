@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import 'firebase_options.dart';
+
 import 'app.dart';
 import 'core/app_store.dart';
 import 'core/theme/app_colors.dart';
@@ -47,7 +49,9 @@ class _ArrowBoxStartupState extends State<ArrowBoxStartup>
       if (widget.firebaseInitializer != null) {
         await widget.firebaseInitializer!();
       } else {
-        await Firebase.initializeApp();
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
       }
     } catch (e) {
       debugPrint('Firebase initialization failed: $e');
@@ -114,7 +118,9 @@ class _StartupSplashState extends State<_StartupSplash> {
   @override
   void initState() {
     super.initState();
-    _entrance = SplashAnimations.createEntranceAnimation(widget.animation as AnimationController);
+    _entrance = SplashAnimations.createEntranceAnimation(
+      widget.animation as AnimationController,
+    );
   }
 
   @override
@@ -126,9 +132,7 @@ class _StartupSplashState extends State<_StartupSplash> {
         body: Stack(
           children: [
             // Background Grid
-            Positioned.fill(
-              child: CustomPaint(painter: _GridPainter()),
-            ),
+            Positioned.fill(child: CustomPaint(painter: _GridPainter())),
             // Floating Tiles
             Center(
               child: Stack(
@@ -250,7 +254,11 @@ class _StartupFailure extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.cloud_off_rounded, color: AppColors.cyan, size: 48),
+              const Icon(
+                Icons.cloud_off_rounded,
+                color: AppColors.cyan,
+                size: 48,
+              ),
               const SizedBox(height: 20),
               const Text(
                 'ArrowBox could not start',
@@ -280,7 +288,10 @@ class _StartupFailure extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Color(0xFF71839B), fontSize: 11),
+                  style: const TextStyle(
+                    color: Color(0xFF71839B),
+                    fontSize: 11,
+                  ),
                 ),
             ],
           ),

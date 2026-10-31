@@ -12,7 +12,8 @@ class CyberArrowSkin extends ArrowSkin {
   @override
   String get name => 'Cyber';
   @override
-  String get description => 'Hard-edged geometric style with circuit-like trails.';
+  String get description =>
+      'Hard-edged geometric style with circuit-like trails.';
 
   @override
   Widget buildArrow({
@@ -21,7 +22,9 @@ class CyberArrowSkin extends ArrowSkin {
     bool highlighted = false,
     bool isInteractive = false,
   }) {
-    final color = highlighted ? const Color(0xFF00FF9D) : const Color(0xFF00E5FF);
+    final color = highlighted
+        ? const Color(0xFF00FF9D)
+        : const Color(0xFF00E5FF);
     return Container(
       width: size,
       height: size,
