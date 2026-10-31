@@ -58,7 +58,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('Play Now'), findsOneWidget);
+    expect(find.text('Play Adventure'), findsOneWidget);
     expect(loadCount, 1);
   });
 
@@ -105,12 +105,12 @@ void main() {
 
     await tester.tap(find.text('Retry'));
     await tester.pump();
-    expect(find.text('Play Now'), findsNothing);
+    expect(find.text('Play Adventure'), findsNothing);
     expect(loadCount, 2);
 
     second.complete(store);
     await tester.pumpAndSettle();
-    expect(find.text('Play Now'), findsOneWidget);
+    expect(find.text('Play Adventure'), findsOneWidget);
   });
 
   testWidgets('Landing screen uses the cube logo instead of hero artwork', (
@@ -131,8 +131,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ArrowBoxTitle), findsWidgets);
-    expect(find.text('Think. Aim. Escape.'), findsOneWidget);
-    expect(find.text('Play Now'), findsOneWidget);
+    expect(find.text('✨ THINK • AIM • ESCAPE'), findsOneWidget);
+    expect(find.text('Play Adventure'), findsOneWidget);
   });
 
   testWidgets('Landing screen fits a narrow viewport', (tester) async {
@@ -147,12 +147,14 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Play Now navigates to level selection', (tester) async {
+  testWidgets('Play Adventure navigates to level selection', (tester) async {
     final store = await AppStore.load();
     await tester.pumpWidget(ArrowBoxApp(store: store));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Play Now'));
+    final playButton = find.text('Play Adventure');
+    await tester.ensureVisible(playButton);
+    await tester.tap(playButton);
     await tester.pumpAndSettle();
 
     expect(find.text('Select Level'), findsOneWidget);
@@ -283,10 +285,12 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 750));
 
       final title = tester.widget<Text>(find.text('Level Complete!'));
-      final subtitle = tester.widget<Text>(find.text('Great job!'));
+      final subtitle = tester.widget<Text>(
+        find.text('Outstanding puzzle solve!'),
+      );
       expect(title.style?.decoration, isNot(TextDecoration.underline));
       expect(subtitle.style?.decoration, isNot(TextDecoration.underline));
     }

@@ -62,9 +62,9 @@ class ArrowLabScreen extends StatelessWidget {
                           const _SubHeader(title: 'ARROW STYLE'),
                           const SizedBox(height: 12),
                           _SkinSelector(store: store, columns: columns),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 20),
                           const _SubHeader(title: 'BOARD THEME'),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           _ThemeSelector(store: store),
                         ],
                       );
@@ -159,7 +159,7 @@ class _ThemeSelector extends StatelessWidget {
         crossAxisCount: 2,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: 2.4,
+        childAspectRatio: 2.05,
       ),
       itemBuilder: (context, index) {
         final theme = themes[index];
@@ -185,66 +185,67 @@ class _ThemeSelectionCard extends StatelessWidget {
   final VoidCallback onTap;
   final BoardTheme theme;
 
+  static const _radius = 14.0;
+  static const _badgeSize = 20.0;
+
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0x1F1685FF) : const Color(0xFF14223B),
-        borderRadius: BorderRadius.circular(16),
+        color: isSelected ? const Color(0xFF15243D) : AppColors.darkCard,
+        borderRadius: BorderRadius.circular(_radius),
         border: Border.all(
           color: isSelected ? AppColors.cyan : const Color(0xFF243656),
-          width: isSelected ? 2 : 1,
+          width: isSelected ? 1.5 : 1,
         ),
-        boxShadow: isSelected
-            ? [
-                BoxShadow(
-                  color: AppColors.cyan.withValues(alpha: 0.2),
-                  blurRadius: 8,
-                  spreadRadius: -1,
-                ),
-              ]
-            : null,
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(_radius),
           child: Stack(
-            clipBehavior: Clip.none,
             children: [
               Padding(
-                padding: const EdgeInsets.only(left: 12, right: 30),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(12, 10, 32, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: theme.background,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: theme.border, width: 2),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        theme.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : const Color(0xFF8AA0BE),
-                          fontSize: 12,
-                          fontWeight: isSelected
-                              ? FontWeight.w800
-                              : FontWeight.w600,
+                    Row(
+                      children: [
+                        Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: theme.background,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: theme.border, width: 2),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            theme.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : const Color(0xFFC5D2E6),
+                              fontSize: 13,
+                              fontWeight: isSelected
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
+                              height: 1.1,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 8),
+                    _ThemeStrip(theme: theme),
                   ],
                 ),
               ),
@@ -258,21 +259,7 @@ class _ThemeSelectionCard extends StatelessWidget {
                   child: AnimatedOpacity(
                     opacity: isSelected ? 1.0 : 0.0,
                     duration: const Duration(milliseconds: 180),
-                    child: Container(
-                      width: 18,
-                      height: 18,
-                      decoration: const BoxDecoration(
-                        color: AppColors.cyan,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.check_rounded,
-                          color: Colors.white,
-                          size: 12,
-                        ),
-                      ),
-                    ),
+                    child: const _SelectionBadge(size: _badgeSize),
                   ),
                 ),
               ),
@@ -280,6 +267,69 @@ class _ThemeSelectionCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A short sample of the theme's board, cell, and frame colors.
+class _ThemeStrip extends StatelessWidget {
+  const _ThemeStrip({required this.theme});
+
+  final BoardTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 10,
+      decoration: BoxDecoration(
+        color: theme.background,
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: theme.border),
+      ),
+      padding: const EdgeInsets.all(2),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.cell,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(width: 2),
+          Expanded(
+            flex: 2,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.frame,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SelectionBadge extends StatelessWidget {
+  const _SelectionBadge({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: AppColors.cyan,
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: const Icon(Icons.check_rounded, color: Colors.white, size: 13),
     );
   }
 }

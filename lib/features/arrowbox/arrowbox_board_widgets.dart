@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../arrow_designs/arrow_designs.dart';
-import 'arrowbox_logic.dart';
 
 Offset arrowEscapeOffset(ArrowDirection direction, double distance) {
   final (rowStep, columnStep) = direction.vector;
@@ -226,19 +225,20 @@ class EmptyBoardCell extends StatelessWidget {
         (isDark ? const Color(0xFF0A1628) : const Color(0xFFE2EAF4));
     final borderColor =
         boardTheme?.border ??
-        (isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08));
+        (isDark
+            ? Colors.white.withValues(alpha: 0.12)
+            : Colors.black.withValues(alpha: 0.08));
 
     return Container(
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: borderColor,
-          width: 1.2,
-        ),
+        border: Border.all(color: borderColor, width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.04),
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.15)
+                : Colors.black.withValues(alpha: 0.04),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

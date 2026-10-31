@@ -169,45 +169,47 @@ void main() {
   });
 
   group('ArrowBox Animation Audit', () {
-    testWidgets('animation ID prevents premature removal after undo and re-tap', (
-      tester,
-    ) async {
-      // Build ArrowBoxScreen
-      final game = ArrowBoxState.initial(level: 1);
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ArrowBoxScreen(store: store, initialState: game),
-        ),
-      );
+    testWidgets(
+      'animation ID prevents premature removal after undo and re-tap',
+      (tester) async {
+        // Build ArrowBoxScreen
+        final game = ArrowBoxState.initial(level: 1);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ArrowBoxScreen(store: store, initialState: game),
+          ),
+        );
 
-      // 1. Tap an arrow to start exit animation
-      await tester.tap(find.byType(GradientArrowTile).first);
-      await tester.pump(); // Start animation
+        // 1. Tap an arrow to start exit animation
+        await tester.tap(find.byType(GradientArrowTile).first);
+        await tester.pump(); // Start animation
 
-      // 2. Tap Undo immediately
-      await tester.tap(find.text('Undo'));
-      await tester.pump();
+        // 2. Tap Undo immediately
+        await tester.tap(find.text('Undo'));
+        await tester.pump();
 
-      // 3. Tap the same arrow again
-      await tester.tap(find.byType(GradientArrowTile).first);
-      await tester.pump();
+        // 3. Tap the same arrow again
+        await tester.tap(find.byType(GradientArrowTile).first);
+        await tester.pump();
 
-      // Now we have two animation callbacks scheduled for the same cell index.
-      // The first one should have a different ID than the second one.
+        // Now we have two animation callbacks scheduled for the same cell index.
+        // The first one should have a different ID than the second one.
 
-      // 4. Wait for the FIRST animation's duration (e.g. 320ms)
-      // but NOT long enough for the second one to finish if it started later.
-      await tester.pump(const Duration(milliseconds: 300));
+        // 4. Wait for the FIRST animation's duration (e.g. 320ms)
+        // but NOT long enough for the second one to finish if it started later.
+        await tester.pump(const Duration(milliseconds: 300));
 
-      // If the bug existed, the first callback would have removed the second
-      // animation record from _exiting, and we'd see an EmptyBoardCell
-      // or the tile would disappear/snap.
+        // If the bug existed, the first callback would have removed the second
+        // animation record from _exiting, and we'd see an EmptyBoardCell
+        // or the tile would disappear/snap.
 
-      // We check that the GradientArrowTile with isEscaping: true still exists
-      expect(
-        find.byWidgetPredicate((w) => w is GradientArrowTile && w.isEscaping),
-        findsOneWidget,
-      );
-    });
+        // We check that the GradientArrowTile with isEscaping: true still exists
+        expect(
+          find.byWidgetPredicate((w) => w is GradientArrowTile && w.isEscaping),
+          findsOneWidget,
+        );
+      },
+      skip: true, // Undo control was removed in gameplay redesign
+    );
   });
 }

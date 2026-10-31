@@ -8,7 +8,9 @@ import 'profile_menu.dart';
 import 'login_screen.dart';
 
 class LoginProfileButton extends StatelessWidget {
-  const LoginProfileButton({super.key});
+  const LoginProfileButton({this.size = 56, super.key});
+
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +22,7 @@ class LoginProfileButton extends StatelessWidget {
 
         if (isSignedIn) {
           return ArrowBoxHeaderIconButton(
+            size: size,
             icon: Icons.person,
             tooltip: 'Profile',
             onPressed: () {
@@ -35,6 +38,7 @@ class LoginProfileButton extends StatelessWidget {
           );
         } else {
           return ArrowBoxHeaderIconButton(
+            size: size,
             icon: Icons.login_rounded,
             tooltip: 'Login',
             onPressed: () {

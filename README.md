@@ -372,20 +372,59 @@ The current palettes are:
 │   │   │   ├── app_colors.dart
 │   │   │   ├── app_text_styles.dart
 │   │   │   └── app_theme.dart
+│   │   ├── services/
+│   │   │   ├── auth_service.dart
+│   │   │   ├── audio_manager.dart
+│   │   │   └── cloud_sync_service.dart
 │   │   └── widgets/
 │   │       └── arrowbox_widgets.dart
 │   └── features/
-│       └── arrowbox/
-│           ├── arrowbox_logic.dart
-│           ├── arrowbox_screen.dart
-│           ├── arrowbox_board_widgets.dart
-│           └── arrowbox_dialogs.dart
+│       ├── home/
+│       │   ├── screens/home_screen.dart
+│       │   └── widgets/home_header.dart
+│       ├── level_selection/
+│       │   ├── screens/level_selection_screen.dart
+│       │   └── widgets/level_tile.dart
+│       ├── arrowbox/
+│       │   ├── screens/arrowbox_screen.dart
+│       │   ├── arrowbox_logic.dart
+│       │   ├── arrowbox_input_queue.dart
+│       │   ├── arrowbox_board_widgets.dart
+│       │   ├── arrowbox_dialogs.dart
+│       │   ├── widgets/
+│       │   │   ├── gameplay_board.dart
+│       │   │   ├── gameplay_hud.dart
+│       │   │   └── gameplay_controls.dart
+│       │   └── dialogs/
+│       │       ├── pause_dialog.dart
+│       │       ├── level_complete_dialog.dart
+│       │       └── game_over_dialog.dart
+│       ├── levels/
+│       │   └── levels.dart (unified level facade)
+│       ├── settings/
+│       │   ├── screens/settings_screen.dart
+│       │   └── widgets/settings_widgets.dart
+│       ├── progress/
+│       │   ├── screens/progress_screen.dart
+│       │   └── widgets/progress_widgets.dart
+│       ├── how_to_play/
+│       │   ├── screens/how_to_play_screen.dart
+│       │   └── widgets/how_to_play_widgets.dart
+│       ├── about/
+│       │   ├── screens/about_screen.dart
+│       │   └── widgets/about_action_row.dart
+│       ├── arrow_lab/
+│       │   └── arrow_lab_screen.dart
+│       ├── arrow_designs/
+│       │   └── arrow_designs.dart
+│       ├── auth/
+│       │   ├── login_screen.dart
+│       │   ├── profile_menu.dart
+│       │   └── login_profile_button.dart
+│       └── shell/
+│           ├── app_shell.dart
+│           └── floating_bottom_nav.dart
 ├── test/
-│   ├── arrowbox_logic_test.dart
-│   └── widget_test.dart
-├── docs/
-│   ├── redesign-plan.md
-│   └── ui-audit.md
 ├── android/
 ├── web/
 ├── pubspec.yaml
@@ -395,14 +434,19 @@ The current palettes are:
 ### Source responsibilities
 
 - `main.dart`: initializes Flutter, locks the app to portrait orientation, loads `AppStore`, and starts `ArrowBoxApp`.
-- `app.dart`: configures `MaterialApp`, themes, preview routing, and the landing, level selection, settings, progress, tutorial, and About screens.
-- `app_store.dart`: loads and persists progress, settings, saved games, and statistics.
-- `arrowbox_logic.dart`: owns directions, levels, board validation, movement, lives, mistakes, undo history, hints, restart, and level transitions.
-- `arrowbox_screen.dart`: coordinates gameplay state, timer, input locking, animations, persistence, pause, and completion/game-over flows.
-- `arrowbox_board_widgets.dart`: renders active arrow tiles and empty board cells.
-- `arrowbox_widgets.dart`: provides branding, artwork, shared action buttons, header buttons, and gameplay controls.
-- `arrowbox_dialogs.dart`: provides pause, level-complete, and game-over overlays.
-- `app_colors.dart` and `app_theme.dart`: define light/dark design tokens and Material themes.
+- `app.dart`: slender application root configuring `MaterialApp`, theme integration, debug routes (`Uri.base.queryParameters['screen']`), and backwards-compatible re-exports.
+- `core/`: app-wide infrastructure including `AppStore` persistence, theme tokens, authentication service, audio management, and reusable widgets.
+- `features/home/`: landing page (`HomeScreen` / `WelcomeScreen`) with fixed header and hero content.
+- `features/level_selection/`: 500-level selection screen with difficulty filtering and level tiles.
+- `features/arrowbox/`: modular gameplay experience decomposed into `ArrowBoxScreen` (lifecycle & controller wiring), `GameplayHud`, `GameplayBoard`, `GameplayControls`, `arrowbox_logic.dart` (pure game rules & solver), and standalone dialogs (`PauseDialog`, `LevelCompleteDialog`, `GameOverDialog`).
+- `features/levels/`: unified facade (`levels.dart`) providing clean access to the deterministic 500-level catalog, generator, rules, solver, and verified manifest.
+- `features/settings/`: settings screen and modular preference rows/switches.
+- `features/progress/`: player mastery statistics and circular progress indicator.
+- `features/how_to_play/`: interactive rules visual cards and step-by-step tutorial.
+- `features/about/`: application information, credits, and legal links.
+- `features/arrow_lab/` & `features/arrow_designs/`: custom arrow skins and board theme customization.
+- `features/auth/`: Firebase sign-in and profile UI.
+- `features/shell/`: root tab shell with floating bottom navigation.
 
 ## Application startup and routing
 

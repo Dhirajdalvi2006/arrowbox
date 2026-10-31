@@ -14,7 +14,6 @@ void main() {
       );
 
       final layouts = <String>{};
-      final stopwatch = Stopwatch()..start();
 
       for (var i = 0; i < 500; i++) {
         final levelNumber = i + 1;
