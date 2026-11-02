@@ -11,6 +11,117 @@ Offset arrowEscapeOffset(ArrowDirection direction, double distance) {
   return Offset(columnStep * distance, rowStep * distance);
 }
 
+class BoardArrowTile extends StatelessWidget {
+  const BoardArrowTile({
+    required this.direction,
+    required this.skin,
+    required this.size,
+    this.highlighted = false,
+    this.pulseColor,
+    super.key,
+  });
+
+  final ArrowDirection direction;
+  final ArrowSkin skin;
+  final double size;
+  final bool highlighted;
+  final Color? pulseColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final (_, gradientColors, glowColor) = switch (direction) {
+      ArrowDirection.up => (
+        Icons.arrow_upward_rounded,
+        AppColors.arrowUpGradient,
+        const Color(0x7721D4FD),
+      ),
+      ArrowDirection.right => (
+        Icons.arrow_forward_rounded,
+        AppColors.arrowRightGradient,
+        const Color(0x77FFB547),
+      ),
+      ArrowDirection.down => (
+        Icons.arrow_downward_rounded,
+        AppColors.arrowDownGradient,
+        const Color(0x77FF5277),
+      ),
+      ArrowDirection.left => (
+        Icons.arrow_back_rounded,
+        AppColors.arrowLeftGradient,
+        const Color(0x7721D98B),
+      ),
+    };
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color:
+              pulseColor ??
+              (highlighted
+                  ? const Color(0xFF21D4FD)
+                  : Colors.white.withValues(alpha: 0.35)),
+          width: highlighted ? 2.5 : 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: glowColor.withValues(alpha: 0.4),
+            blurRadius: 12,
+            spreadRadius: 1,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.3),
+            blurRadius: 0,
+            spreadRadius: -2,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: 2,
+            left: 4,
+            right: 4,
+            child: Container(
+              height: 12,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.white.withValues(alpha: 0.4),
+                    Colors.white.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: LayoutBuilder(
+              builder: (context, constraints) => skin.buildArrow(
+                direction: direction,
+                size: constraints.biggest.shortestSide,
+                highlighted: highlighted,
+                isInteractive: true,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class GradientArrowTile extends StatefulWidget {
   const GradientArrowTile({
     required this.direction,
@@ -128,29 +239,6 @@ class _GradientArrowTileState extends State<GradientArrowTile>
 
   @override
   Widget build(BuildContext context) {
-    final (icon, gradientColors, glowColor) = switch (widget.direction) {
-      ArrowDirection.up => (
-        Icons.arrow_upward_rounded,
-        AppColors.arrowUpGradient,
-        const Color(0x7721D4FD),
-      ),
-      ArrowDirection.right => (
-        Icons.arrow_forward_rounded,
-        AppColors.arrowRightGradient,
-        const Color(0x77FFB547),
-      ),
-      ArrowDirection.down => (
-        Icons.arrow_downward_rounded,
-        AppColors.arrowDownGradient,
-        const Color(0x77FF5277),
-      ),
-      ArrowDirection.left => (
-        Icons.arrow_back_rounded,
-        AppColors.arrowLeftGradient,
-        const Color(0x7721D98B),
-      ),
-    };
-
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return AnimatedBuilder(
@@ -200,72 +288,19 @@ class _GradientArrowTileState extends State<GradientArrowTile>
                   child: InkWell(
                     borderRadius: BorderRadius.circular(14),
                     onTap: widget.isEscaping ? null : widget.onTap,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: gradientColors,
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: widget.highlighted
-                              ? Color.lerp(
-                                  Colors.white,
-                                  const Color(0xFF21D4FD),
-                                  _pulseController.value,
-                                )!
-                              : Colors.white.withValues(alpha: 0.35),
-                          width: widget.highlighted ? 2.5 : 1.2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: glowColor.withValues(alpha: 0.4),
-                            blurRadius: 12,
-                            spreadRadius: 1,
-                            offset: const Offset(0, 4),
-                          ),
-                          BoxShadow(
-                            color: Colors.white.withValues(alpha: 0.3),
-                            blurRadius: 0,
-                            spreadRadius: -2,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 2,
-                            left: 4,
-                            right: 4,
-                            child: Container(
-                              height: 12,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.white.withValues(alpha: 0.4),
-                                    Colors.white.withValues(alpha: 0.0),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned.fill(
-                            child: LayoutBuilder(
-                              builder: (context, constraints) =>
-                                  widget.skin.buildArrow(
-                                    direction: widget.direction,
-                                    size: constraints.biggest.shortestSide,
-                                    highlighted: widget.highlighted,
-                                    isInteractive: true,
-                                  ),
-                            ),
-                          ),
-                        ],
+                    child: LayoutBuilder(
+                      builder: (context, constraints) => BoardArrowTile(
+                        direction: widget.direction,
+                        skin: widget.skin,
+                        size: constraints.biggest.shortestSide,
+                        highlighted: widget.highlighted,
+                        pulseColor: widget.highlighted
+                            ? Color.lerp(
+                                Colors.white,
+                                const Color(0xFF21D4FD),
+                                _pulseController.value,
+                              )!
+                            : null,
                       ),
                     ),
                   ),

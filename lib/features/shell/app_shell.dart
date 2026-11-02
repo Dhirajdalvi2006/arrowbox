@@ -35,15 +35,27 @@ class _AppShellState extends State<AppShell> {
       ),
       _LazyTab(
         active: _index == 2,
-        builder: () => ArrowLabScreen(store: widget.store),
+        builder: () => ArrowLabScreen(
+          store: widget.store,
+          embedded: true,
+          onBackPressed: () => setState(() => _index = 0),
+        ),
       ),
       _LazyTab(
         active: _index == 3,
-        builder: () => ProgressScreen(store: widget.store, embedded: true),
+        builder: () => ProgressScreen(
+          store: widget.store,
+          embedded: true,
+          onBackPressed: () => setState(() => _index = 0),
+        ),
       ),
       _LazyTab(
         active: _index == 4,
-        builder: () => SettingsScreen(store: widget.store, embedded: true),
+        builder: () => SettingsScreen(
+          store: widget.store,
+          embedded: true,
+          onBackPressed: () => setState(() => _index = 0),
+        ),
       ),
     ];
 

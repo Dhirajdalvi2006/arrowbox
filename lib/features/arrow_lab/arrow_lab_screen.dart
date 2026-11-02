@@ -6,28 +6,24 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/arrowbox_widgets.dart';
 import '../arrow_designs/arrow_designs.dart';
 import '../auth/login_profile_button.dart';
+import '../shell/app_shell.dart';
 
 /// Arrow Lab — premium appearance customization screen.
 ///
 /// Provides a unified catalog of arrow skins and board themes with
 /// milestone-based unlocking driven by completed level count.
-///
-/// The screen shows the Arrow Appearance preview, the ARROW STYLE catalog,
-/// and the BOARD THEME catalog on one scrollable page.
-///
-/// Rewards unlock automatically when the player reaches the required
-/// completed-level milestone. Unlocked rewards can be equipped instantly
-/// without restarting the app. Locked rewards remain visible with their
-/// level requirement and cannot be equipped. The equipped skin/theme drive
-/// the live preview and the real gameplay board.
 class ArrowLabScreen extends StatelessWidget {
-  const ArrowLabScreen({required this.store, super.key});
+  const ArrowLabScreen({
+    required this.store,
+    this.embedded = false,
+    this.onBackPressed,
+    super.key,
+  });
 
   final AppStore store;
+  final bool embedded;
+  final VoidCallback? onBackPressed;
 
-  /// Bottom padding applied to the scrollable content so the final grid row
-  /// scrolls completely above the fixed bottom navigation bar (and any device
-  /// bottom safe-area inset) instead of being hidden behind it.
   static const double _bottomPadding = 140.0;
 
   @override
@@ -102,9 +98,6 @@ class ArrowLabScreen extends StatelessWidget {
     );
   }
 
-  /// Responsive preview-board size. Scales with available width but is capped
-  /// by a fraction of the available height so the board never crowds out the
-  /// catalog on narrow phones.
   double _previewBoardSize(BuildContext context) {
     final width = MediaQuery.of(context).size.width.toDouble();
     final heightCap = MediaQuery.of(context).size.height * 0.22;
@@ -114,15 +107,34 @@ class ArrowLabScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          ArrowBoxLogoMark(size: 32),
-          SizedBox(width: 12),
-          ArrowBoxTitle(fontSize: 22),
-          Spacer(),
-          LoginProfileButton(),
+          ArrowBoxHeaderIconButton(
+            icon: Icons.arrow_back_rounded,
+            tooltip: 'Back to Home',
+            size: 44,
+            iconColor: AppColors.primaryBright,
+            onPressed: () {
+              if (onBackPressed != null) {
+                onBackPressed!();
+              } else if (embedded) {
+                // embedded default
+              } else if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => AppShell(store: store)),
+                );
+              }
+            },
+          ),
+          const SizedBox(width: 12),
+          const ArrowBoxTitle(fontSize: 22),
+          const Spacer(),
+          const LoginProfileButton(),
         ],
       ),
     );
@@ -157,10 +169,7 @@ class _SkinGrid extends StatelessWidget {
         crossAxisCount: columns,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        // Square-ish cells give every card enough height for its preview,
-        // name, and (when locked) a two-line unlock requirement without
-        // overflowing the cell on narrow screens.
-        childAspectRatio: 1.0,
+        childAspectRatio: columns == 2 ? 1.2 : 1.1,
       ),
       delegate: SliverChildBuilderDelegate((context, index) {
         final skin = skins[index];
@@ -240,7 +249,6 @@ class _SkinCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Preview arrow tile
                 Container(
                   width: 44,
                   height: 44,
@@ -265,7 +273,6 @@ class _SkinCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                // Skin name (ellipsis keeps long names from overflowing).
                 Text(
                   skin.name,
                   textAlign: TextAlign.center,
@@ -282,7 +289,6 @@ class _SkinCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                // Status
                 if (isSelected)
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -372,11 +378,8 @@ class _ThemeGrid extends StatelessWidget {
   }
 
   double _themeAspectRatio(BuildContext context) {
-    // On narrow screens use taller cells so the theme strip, name, and lock
-    // status fit without vertical overflow. On wider screens the original
-    // wider, shorter card proportions are preserved.
     final width = MediaQuery.of(context).size.width;
-    return width < 500 ? 1.5 : 2.05;
+    return width < 480 ? 2.1 : 2.4;
   }
 
   @override
@@ -425,8 +428,7 @@ class _ThemeCard extends StatelessWidget {
 
   bool get canEquip => isUnlocked && !isSelected;
 
-  static const _radius = 14.0;
-  static const _badgeSize = 20.0;
+  static const _radius = 16.0;
 
   @override
   Widget build(BuildContext context) {
@@ -454,121 +456,95 @@ class _ThemeCard extends StatelessWidget {
         child: InkWell(
           onTap: canEquip ? () => store.setBoardTheme(theme.id) : null,
           borderRadius: BorderRadius.circular(_radius),
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 32, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 18,
-                          height: 18,
-                          decoration: BoxDecoration(
-                            color: theme.background,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: theme.border, width: 2),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            theme.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : isUnlocked
-                                  ? const Color(0xFFC5D2E6)
-                                  : AppColors.getTextMuted(context),
-                              fontSize: 13,
-                              fontWeight: isSelected
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
-                              height: 1.1,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    _ThemeStrip(theme: theme),
-                    const SizedBox(height: 8),
-                    // Status
-                    if (isSelected)
-                      const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check_rounded,
-                            color: AppColors.cyan,
-                            size: 12,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'EQUIPPED',
-                            style: TextStyle(
-                              color: AppColors.cyan,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      )
-                    else if (isUnlocked)
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                _ThemeMiniBoard(theme: theme),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
                       Text(
-                        'Unlocked',
+                        theme.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: AppColors.primaryBright,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                          color: isSelected
+                              ? Colors.white
+                              : isUnlocked
+                              ? const Color(0xFFC5D2E6)
+                              : AppColors.getTextMuted(context),
+                          fontSize: 13.5,
+                          fontWeight: isSelected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
                         ),
-                      )
-                    else
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Locked',
-                            style: TextStyle(
-                              color: AppColors.getTextMuted(context),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      if (isSelected)
+                        const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.check_rounded,
+                                color: AppColors.cyan,
+                                size: 12,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'EQUIPPED',
+                                style: TextStyle(
+                                  color: AppColors.cyan,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
                           ),
-                          if (requiredLevel > 0)
-                            Text(
-                              'Unlocks at Level $requiredLevel',
+                        )
+                      else if (isUnlocked)
+                        const Text(
+                          'Unlocked',
+                          style: TextStyle(
+                            color: AppColors.primaryBright,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        )
+                      else
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Locked',
                               style: TextStyle(
-                                color: AppColors.getTextMuted(context),
-                                fontSize: 9,
+                                color: Color(0xFF8AA0BE),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: AnimatedScale(
-                  scale: isSelected ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutBack,
-                  child: AnimatedOpacity(
-                    opacity: isSelected ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 180),
-                    child: const _SelectionBadge(size: _badgeSize),
+                            if (requiredLevel > 0)
+                              Text(
+                                'Level $requiredLevel',
+                                style: TextStyle(
+                                  color: AppColors.getTextMuted(context),
+                                  fontSize: 9,
+                                ),
+                              ),
+                          ],
+                        ),
+                    ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -576,65 +552,38 @@ class _ThemeCard extends StatelessWidget {
   }
 }
 
-/// A short sample of the theme's board, cell, and frame colors.
-class _ThemeStrip extends StatelessWidget {
-  const _ThemeStrip({required this.theme});
+/// Compact miniature 3x3 board preview reflecting the theme's exact colors.
+class _ThemeMiniBoard extends StatelessWidget {
+  const _ThemeMiniBoard({required this.theme});
 
   final BoardTheme theme;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 10,
+      width: 52,
+      height: 52,
       decoration: BoxDecoration(
         color: theme.background,
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: theme.border),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: theme.border, width: 1.2),
       ),
-      padding: const EdgeInsets.all(2),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: theme.cell,
-                borderRadius: BorderRadius.circular(2),
-              ),
+      padding: const EdgeInsets.all(4),
+      child: GridView.count(
+        crossAxisCount: 3,
+        mainAxisSpacing: 2,
+        crossAxisSpacing: 2,
+        physics: const NeverScrollableScrollPhysics(),
+        children: List.generate(9, (index) {
+          final isCenter = index == 4;
+          return Container(
+            decoration: BoxDecoration(
+              color: isCenter ? theme.frame : theme.cell,
+              borderRadius: BorderRadius.circular(2),
             ),
-          ),
-          const SizedBox(width: 2),
-          Expanded(
-            flex: 2,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: theme.frame,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-        ],
+          );
+        }),
       ),
-    );
-  }
-}
-
-class _SelectionBadge extends StatelessWidget {
-  const _SelectionBadge({required this.size});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: const BoxDecoration(
-        color: AppColors.cyan,
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: const Icon(Icons.check_rounded, color: Colors.white, size: 13),
     );
   }
 }

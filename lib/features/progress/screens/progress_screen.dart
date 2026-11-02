@@ -2,28 +2,34 @@ import 'package:flutter/material.dart';
 
 import '../../../core/app_store.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../arrowbox/arrowbox_logic.dart';
-import '../../arrowbox/arrowbox_screen.dart';
+import '../../shell/app_shell.dart';
 import '../widgets/achievements_section.dart';
 import '../widgets/journey_card.dart';
 import '../widgets/player_stats_grid.dart';
 import '../widgets/recent_activity_section.dart';
+import 'activity_history_screen.dart';
 
 /// Progress screen — gameplay statistics and level progression.
 ///
 /// Sections (in order):
 /// 1. Page header — back button + Progress title
-/// 2. Your Journey card — animated progress ring, continue button
+/// 2. Your Journey card — animated progress ring and encouraging text
 /// 3. Player Stats — responsive two-column grid
 /// 4. Recent Activity — horizontal list of completed levels
 /// 5. Personal Bests — streak, perfect clears, total completed
 ///
 /// Listens to [AppStore] changes so the UI updates when progress is saved.
 class ProgressScreen extends StatefulWidget {
-  const ProgressScreen({required this.store, this.embedded = false, super.key});
+  const ProgressScreen({
+    required this.store,
+    this.embedded = false,
+    this.onBackPressed,
+    super.key,
+  });
 
   final AppStore store;
   final bool embedded;
+  final VoidCallback? onBackPressed;
 
   @override
   State<ProgressScreen> createState() => _ProgressScreenState();
@@ -59,21 +65,28 @@ class _ProgressScreenState extends State<ProgressScreen> {
     }
   }
 
-  void _continuePlaying() {
-    final nextLevel = widget.store.unlockedLevel;
-    final totalLevels = AppStore.totalLevels;
+  void _handleBack() {
+    if (widget.embedded) {
+      // Rendered inside the AppShell bottom navigation: select the Home tab.
+      widget.onBackPressed?.call();
+      return;
+    }
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    // Standalone route fallback: land on the app home shell.
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => AppShell(store: widget.store)),
+      (route) => false,
+    );
+  }
 
-    if (nextLevel > totalLevels) return;
-
-    final savedState = widget.store.savedGames[nextLevel];
-
+  void _openActivityHistory() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ArrowBoxScreen(
-          store: widget.store,
-          initialState: savedState ?? ArrowBoxState.initial(level: nextLevel),
-        ),
+        builder: (_) => ActivityHistoryScreen(store: widget.store),
       ),
     );
   }
@@ -113,17 +126,15 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       color: AppColors.primaryBright,
                       icon: const Icon(Icons.arrow_back_rounded),
                       tooltip: 'Back',
-                      onPressed: widget.embedded
-                          ? () {}
-                          : () => Navigator.pop(context),
+                      onPressed: _handleBack,
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
+                  const Expanded(
                     child: Text(
                       'Progress',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -131,7 +142,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 56), // Visual balance for back button
+                  const SizedBox(width: 44), // Visual balance for back button
                 ],
               ),
             ),
@@ -144,7 +155,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   20,
                   8,
                   20,
-                  widget.embedded ? 100 : 24,
+                  widget.embedded ? 120 : 24,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,10 +163,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     const SizedBox(height: 4),
 
                     // Your Journey card
-                    JourneyCard(
-                      store: widget.store,
-                      onContinue: _continuePlaying,
-                    ),
+                    JourneyCard(store: widget.store),
 
                     const SizedBox(height: 24),
 
@@ -165,7 +173,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     const SizedBox(height: 24),
 
                     // Recent Activity
-                    RecentActivitySection(store: widget.store),
+                    RecentActivitySection(
+                      store: widget.store,
+                      onViewAll: _openActivityHistory,
+                    ),
 
                     const SizedBox(height: 24),
 

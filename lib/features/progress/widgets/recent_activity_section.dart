@@ -7,9 +7,15 @@ import 'activity_card.dart';
 /// Recently completed levels activity section with a properly constrained
 /// horizontal carousel that never clips cards at the edges.
 class RecentActivitySection extends StatelessWidget {
-  const RecentActivitySection({required this.store, super.key});
+  const RecentActivitySection({
+    required this.store,
+    required this.onViewAll,
+    super.key,
+  });
 
   final AppStore store;
+
+  final VoidCallback onViewAll;
 
   @override
   Widget build(BuildContext context) {
@@ -39,9 +45,7 @@ class RecentActivitySection extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               GestureDetector(
-                onTap: () {
-                  // View All placeholder - no dedicated history screen exists yet.
-                },
+                onTap: onViewAll,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

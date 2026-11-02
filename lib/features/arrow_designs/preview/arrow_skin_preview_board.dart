@@ -74,7 +74,7 @@ class ArrowSkinPreviewBoard extends StatelessWidget {
         ),
         itemBuilder: (context, index) => sample[index] == null
             ? EmptyBoardCell(theme: boardTheme)
-            : skin.buildArrow(direction: sample[index]!, size: tile),
+            : BoardArrowTile(direction: sample[index]!, skin: skin, size: tile),
       ),
     );
   }

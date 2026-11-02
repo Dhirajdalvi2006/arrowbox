@@ -23,7 +23,7 @@ class AppStore extends ChangeNotifier {
       gamesPlayed = _nonNegative(_prefs.getInt('gamesPlayed')),
       totalMistakes = _nonNegative(_prefs.getInt('totalMistakes')),
       soundEnabled = _prefs.getBool('soundEnabled') ?? true,
-      musicEnabled = _prefs.getBool('musicEnabled') ?? true,
+      musicEnabled = _prefs.getBool('musicEnabled') ?? false,
       musicVolume = _prefs.getDouble('musicVolume') ?? 0.7,
       hapticsEnabled = _prefs.getBool('hapticsEnabled') ?? true,
       confirmRestart = _prefs.getBool('confirmRestart') ?? true,
@@ -46,7 +46,7 @@ class AppStore extends ChangeNotifier {
       gamesPlayed = _nonNegative(_prefs.getInt('gamesPlayed')),
       totalMistakes = _nonNegative(_prefs.getInt('totalMistakes')),
       soundEnabled = _prefs.getBool('soundEnabled') ?? true,
-      musicEnabled = _prefs.getBool('musicEnabled') ?? true,
+      musicEnabled = _prefs.getBool('musicEnabled') ?? false,
       musicVolume = _prefs.getDouble('musicVolume') ?? 0.7,
       hapticsEnabled = _prefs.getBool('hapticsEnabled') ?? true,
       confirmRestart = _prefs.getBool('confirmRestart') ?? true,
@@ -171,6 +171,30 @@ class AppStore extends ChangeNotifier {
       savedGame != null && !savedGame!.isCleared && !savedGame!.isGameOver;
 
   bool get hasProgress => completedLevels.isNotEmpty || unlockedLevel > 1;
+
+  /// The highest level the player has completed so far.
+  int get highestCompletedLevel {
+    if (completedLevels.isEmpty) return 0;
+    return completedLevels.reduce((a, b) => a > b ? a : b);
+  }
+
+  /// Whether the player has completed the entire level catalog.
+  bool get isFullyComplete => highestCompletedLevel >= AppStore.totalLevels;
+
+  /// The next playable level for the current player.
+  ///
+  /// Derived from the authoritative completed-level data (the level after the
+  /// highest completed level, capped at the total catalog size) rather than
+  /// from the stored unlocked cursor, so progress statistics can never show a
+  /// stale or inconsistent "next" value. Returns level 1 for brand-new players
+  /// and the final catalog level once every level is complete.
+  int get nextPlayableLevel {
+    final highest = highestCompletedLevel;
+    final next = highest + 1;
+    if (next < 1) return 1;
+    if (next > AppStore.totalLevels) return AppStore.totalLevels;
+    return next;
+  }
 
   /// Whether the authenticated user is the designated administrator.
   ///
@@ -704,7 +728,7 @@ class AppStore extends ChangeNotifier {
   Future<void> resetSettings() {
     return _enqueueWrite(() async {
       soundEnabled = true;
-      musicEnabled = true;
+      musicEnabled = false;
       musicVolume = 0.7;
       hapticsEnabled = true;
       confirmRestart = true;

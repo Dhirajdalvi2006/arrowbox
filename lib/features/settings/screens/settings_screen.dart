@@ -14,10 +14,16 @@ import '../widgets/settings_widgets.dart';
 /// sections. Every control writes through [AppStore] and affects real
 /// application behaviour immediately.
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({required this.store, this.embedded = false, super.key});
+  const SettingsScreen({
+    required this.store,
+    this.embedded = false,
+    this.onBackPressed,
+    super.key,
+  });
 
   final AppStore store;
   final bool embedded;
+  final VoidCallback? onBackPressed;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -245,7 +251,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: AppColors.primaryBright,
                     icon: const Icon(Icons.arrow_back_rounded),
                     tooltip: 'Back',
-                    onPressed: embedded ? () {} : () => Navigator.pop(context),
+                    onPressed: () {
+                      if (widget.onBackPressed != null) {
+                        widget.onBackPressed!();
+                      } else if (!embedded && Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        Navigator.popUntil(context, (route) => route.isFirst);
+                      }
+                    },
                   ),
                 ),
                 Expanded(

@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../../../core/app_store.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/arrowbox_widgets.dart';
 import 'progress_ring.dart';
 
-/// Hero card showing overall journey progress with animated ring and continue button.
+/// Hero card showing overall journey progress with an animated ring and an
+/// encouraging message. The standalone continue button was removed from the
+/// gameplay journey card; level launching remains available through the level
+/// selection and home screens.
 class JourneyCard extends StatelessWidget {
-  const JourneyCard({required this.store, this.onContinue, super.key});
+  const JourneyCard({required this.store, super.key});
 
   final AppStore store;
-  final VoidCallback? onContinue;
 
   String _getMotivationalMessage(double progressRatio) {
     if (progressRatio >= 1.0) {
@@ -33,8 +34,7 @@ class JourneyCard extends StatelessWidget {
     final completedCount = store.completedLevels.length;
     final totalLevels = AppStore.totalLevels;
     final progressRatio = (completedCount / totalLevels).clamp(0.0, 1.0);
-    final nextLevel = store.unlockedLevel;
-    final canContinue = nextLevel <= totalLevels;
+    final isComplete = progressRatio >= 1.0;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -81,101 +81,105 @@ class JourneyCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 130,
-                height: 130,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    ProgressRing(
-                      progress: progressRatio,
-                      size: 130,
-                      strokeWidth: 10,
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final double ringSize = constraints.maxWidth
+                  .clamp(90.0, 130.0)
+                  .toDouble();
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: ringSize,
+                    height: ringSize,
+                    child: Stack(
+                      alignment: Alignment.center,
                       children: [
-                        const Icon(
-                          Icons.star_rounded,
-                          color: AppColors.starGold,
-                          size: 32,
+                        ProgressRing(
+                          progress: progressRatio,
+                          size: ringSize,
+                          strokeWidth: 10,
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '$completedCount / $totalLevels',
-                          style: TextStyle(
-                            color: AppColors.getTextPrimary(context),
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Text(
-                          'Levels Completed',
-                          style: TextStyle(
-                            color: AppColors.getTextSecondary(context),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                        Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.star_rounded,
+                                  color: AppColors.starGold,
+                                  size: 32,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '$completedCount / $totalLevels',
+                                  style: TextStyle(
+                                    color: AppColors.getTextPrimary(context),
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Levels Completed',
+                                  style: TextStyle(
+                                    color: AppColors.getTextSecondary(context),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _getMotivationalMessage(progressRatio),
-                      style: TextStyle(
-                        color: AppColors.getTextPrimary(context),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (canContinue)
-                      SizedBox(
-                        height: 52,
-                        child: ArrowBoxSecondaryButton(
-                          label: 'Continue Level $nextLevel',
-                          icon: Icons.play_arrow_rounded,
-                          onPressed: onContinue,
-                          showTrailingChevron: true,
-                        ),
-                      )
-                    else
-                      Container(
-                        height: 52,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: AppColors.success.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(26),
-                          border: Border.all(
-                            color: AppColors.success.withValues(alpha: 0.4),
-                            width: 1.2,
-                          ),
-                        ),
-                        child: const Text(
-                          'All Levels Complete! 🎉',
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _getMotivationalMessage(progressRatio),
                           style: TextStyle(
-                            color: AppColors.success,
-                            fontSize: 14,
+                            color: AppColors.getTextPrimary(context),
+                            fontSize: 16,
                             fontWeight: FontWeight.w700,
+                            height: 1.4,
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
+                        if (isComplete) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            height: 52,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: AppColors.success.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(26),
+                              border: Border.all(
+                                color: AppColors.success.withValues(alpha: 0.4),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: const Text(
+                              'All Levels Complete! 🎉',
+                              style: TextStyle(
+                                color: AppColors.success,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

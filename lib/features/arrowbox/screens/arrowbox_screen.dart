@@ -108,7 +108,9 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
     _exitTimers.clear();
     _timer?.cancel();
     _saveCurrentGame();
-    unawaited(AudioManager.instance.stopMusic());
+    // Music lifecycle is intentionally independent of the gameplay screen so
+    // that navigating between screens does not stop/restart the track. Music
+    // stops only when the user disables it in Settings or the app backgrounds.
     super.dispose();
   }
 

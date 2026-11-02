@@ -50,7 +50,7 @@ class PlayerStatsGrid extends StatelessWidget {
                 icon: Icons.play_circle_rounded,
                 iconColor: AppColors.violet,
                 label: 'Next Level',
-                value: '${store.unlockedLevel}',
+                value: '${store.nextPlayableLevel}',
               ),
             ),
           ],
