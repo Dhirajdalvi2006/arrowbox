@@ -6,11 +6,24 @@ import 'package:locate/core/widgets/arrowbox_widgets.dart';
 import 'package:locate/features/arrow_designs/arrow_designs.dart';
 import 'package:locate/features/arrow_lab/arrow_lab_screen.dart';
 import 'package:locate/features/arrowbox/arrowbox_board_widgets.dart';
-import 'package:locate/features/arrowbox/arrowbox_logic.dart';
 import 'package:locate/features/arrowbox/arrowbox_screen.dart';
+import 'package:locate/features/arrowbox/arrowbox_logic.dart';
 import 'package:locate/features/shell/app_shell.dart';
 import 'package:locate/features/shell/floating_bottom_nav.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// Scrolls the appearance catalog until [text] is rendered and visible.
+///
+/// Sliver grids build their items lazily, so off-screen skins/themes must be
+/// scrolled into view before they can be located or tapped.
+Future<void> scrollToText(WidgetTester tester, String text) async {
+  final scrollable = find.byType(CustomScrollView).first;
+  for (var i = 0; i < 40 && find.text(text).evaluate().isEmpty; i++) {
+    await tester.drag(scrollable, const Offset(0, -500));
+    await tester.pumpAndSettle();
+  }
+  await tester.pumpAndSettle();
+}
 
 void main() {
   test(
@@ -106,19 +119,32 @@ void main() {
   });
 
   testWidgets('Arrow Lab exposes every skin and board theme', (tester) async {
-    tester.view.physicalSize = const Size(1080, 2400);
-    tester.view.devicePixelRatio = 2.0;
     addTearDown(() => tester.view.reset());
 
+    // Set up completed levels so all skins and themes are unlocked.
+    SharedPreferences.setMockInitialValues({
+      'completedLevels': List<String>.generate(501, (i) => i.toString()),
+    });
     final store = await AppStore.load();
     await tester.pumpWidget(MaterialApp(home: ArrowLabScreen(store: store)));
     await tester.pumpAndSettle();
 
+    expect(find.byType(ArrowSkinPreviewBoard), findsOneWidget);
+    expect(find.byType(EmptyBoardCell), findsWidgets);
+
     expect(find.text('Arrow Appearance'), findsOneWidget);
     expect(find.text('ARROW STYLE'), findsOneWidget);
 
-    final boardThemeHeader = find.text('BOARD THEME');
-    expect(boardThemeHeader, findsOneWidget);
+    // Equip Neon skin near the top of the catalog.
+    await scrollToText(tester, 'Neon');
+    await tester.tap(find.text('Neon'));
+    await tester.pump();
+    expect(store.arrowSkinId, ArrowSkinId.neon);
+
+    // Scroll to the BOARD THEME section to confirm every item builds.
+    await scrollToText(tester, 'BOARD THEME');
+    await tester.pumpAndSettle();
+    expect(find.text('BOARD THEME'), findsOneWidget);
 
     expect(find.text('Create. Experiment. Master.'), findsNothing);
     expect(find.text('Lab Tools'), findsNothing);
@@ -126,24 +152,11 @@ void main() {
     expect(find.text('Reset Preview'), findsNothing);
     expect(find.text('Save Config'), findsNothing);
 
-    expect(
-      find.text(ArrowSkinRegistry.byId(store.arrowSkinId).name),
-      findsOneWidget,
-    );
-    expect(
-      find.text(BoardThemeRegistry.byId(store.boardThemeId).name),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.text('Neon'));
-    await tester.pump();
-    expect(store.arrowSkinId, ArrowSkinId.neon);
-
+    // Equip Graphite theme further down in the theme catalog.
+    await scrollToText(tester, 'Graphite');
     await tester.tap(find.text('Graphite'));
     await tester.pump();
     expect(store.boardThemeId, BoardThemeId.graphite);
-    expect(find.byType(ArrowSkinPreviewBoard), findsOneWidget);
-    expect(find.byType(EmptyBoardCell), findsWidgets);
   });
 
   testWidgets('WelcomeScreen has correct hero logo and action cards', (

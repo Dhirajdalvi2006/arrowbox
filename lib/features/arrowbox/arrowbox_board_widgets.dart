@@ -55,7 +55,7 @@ class _GradientArrowTileState extends State<GradientArrowTile>
     super.initState();
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 900),
     );
     _escapeController = AnimationController(
       vsync: this,
@@ -78,11 +78,7 @@ class _GradientArrowTileState extends State<GradientArrowTile>
     );
 
     if (widget.highlighted) {
-      _pulseController.forward(from: 0.0).then((_) {
-        if (mounted && widget.highlighted) {
-          _pulseController.forward(from: 0.0);
-        }
-      });
+      _pulseController.repeat(reverse: true);
     }
     if (widget.isEscaping) {
       _escapeController.forward();
@@ -101,11 +97,7 @@ class _GradientArrowTileState extends State<GradientArrowTile>
   void didUpdateWidget(covariant GradientArrowTile oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.highlighted && !oldWidget.highlighted) {
-      _pulseController.forward(from: 0.0).then((_) {
-        if (mounted && widget.highlighted) {
-          _pulseController.forward(from: 0.0);
-        }
-      });
+      _pulseController.repeat(reverse: true);
     } else if (!widget.highlighted && oldWidget.highlighted) {
       _pulseController.stop();
       _pulseController.reset();
@@ -136,6 +128,29 @@ class _GradientArrowTileState extends State<GradientArrowTile>
 
   @override
   Widget build(BuildContext context) {
+    final (icon, gradientColors, glowColor) = switch (widget.direction) {
+      ArrowDirection.up => (
+        Icons.arrow_upward_rounded,
+        AppColors.arrowUpGradient,
+        const Color(0x7721D4FD),
+      ),
+      ArrowDirection.right => (
+        Icons.arrow_forward_rounded,
+        AppColors.arrowRightGradient,
+        const Color(0x77FFB547),
+      ),
+      ArrowDirection.down => (
+        Icons.arrow_downward_rounded,
+        AppColors.arrowDownGradient,
+        const Color(0x77FF5277),
+      ),
+      ArrowDirection.left => (
+        Icons.arrow_back_rounded,
+        AppColors.arrowLeftGradient,
+        const Color(0x7721D98B),
+      ),
+    };
+
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return AnimatedBuilder(
@@ -185,19 +200,73 @@ class _GradientArrowTileState extends State<GradientArrowTile>
                   child: InkWell(
                     borderRadius: BorderRadius.circular(14),
                     onTap: widget.isEscaping ? null : widget.onTap,
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final rawSize = constraints.biggest.shortestSide;
-                        final size = (rawSize <= 0.0 || rawSize.isNaN)
-                            ? 60.0
-                            : rawSize;
-                        return widget.skin.buildArrow(
-                          direction: widget.direction,
-                          size: size,
-                          highlighted: widget.highlighted,
-                          isInteractive: true,
-                        );
-                      },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: gradientColors,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: widget.highlighted
+                              ? Color.lerp(
+                                  Colors.white,
+                                  const Color(0xFF21D4FD),
+                                  _pulseController.value,
+                                )!
+                              : Colors.white.withValues(alpha: 0.35),
+                          width: widget.highlighted ? 2.5 : 1.2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: glowColor.withValues(alpha: 0.4),
+                            blurRadius: 12,
+                            spreadRadius: 1,
+                            offset: const Offset(0, 4),
+                          ),
+                          BoxShadow(
+                            color: Colors.white.withValues(alpha: 0.3),
+                            blurRadius: 0,
+                            spreadRadius: -2,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            top: 2,
+                            left: 4,
+                            right: 4,
+                            child: Container(
+                              height: 12,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.white.withValues(alpha: 0.4),
+                                    Colors.white.withValues(alpha: 0.0),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned.fill(
+                            child: LayoutBuilder(
+                              builder: (context, constraints) =>
+                                  widget.skin.buildArrow(
+                                    direction: widget.direction,
+                                    size: constraints.biggest.shortestSide,
+                                    highlighted: widget.highlighted,
+                                    isInteractive: true,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -210,7 +279,7 @@ class _GradientArrowTileState extends State<GradientArrowTile>
   }
 }
 
-/// Empty Board Cell matching subtle requirement
+/// Empty Board Cell with centered dot matching Reference 1
 class EmptyBoardCell extends StatelessWidget {
   const EmptyBoardCell({this.theme, super.key});
 
@@ -225,125 +294,31 @@ class EmptyBoardCell extends StatelessWidget {
         (isDark ? const Color(0xFF0A1628) : const Color(0xFFE2EAF4));
     final borderColor =
         boardTheme?.border ??
-        (isDark
-            ? Colors.white.withValues(alpha: 0.12)
-            : Colors.black.withValues(alpha: 0.08));
+        (isDark ? const Color(0xFF142640) : const Color(0xFFD0DCED));
+    final dotColor = (boardTheme?.dot ?? AppColors.getBoardDot(context))
+        .withValues(alpha: 0.4);
 
     return Container(
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.15)
-                : Colors.black.withValues(alpha: 0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: borderColor, width: 1),
       ),
-    );
-  }
-}
-
-/// Hint Panel matching Reference 1 with glowing bulb and right chevron
-class GameplayHintPanel extends StatelessWidget {
-  const GameplayHintPanel({
-    required this.message,
-    required this.onTapHint,
-    super.key,
-  });
-
-  final String message;
-  final VoidCallback onTapHint;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: AppColors.getCard(context).withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.getBorder(context).withValues(alpha: 0.5),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTapHint,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFB547).withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFFB547).withValues(alpha: 0.2),
-                          blurRadius: 12,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.lightbulb_rounded,
-                      color: Color(0xFFFFCC33),
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Hint',
-                          style: TextStyle(
-                            color: AppColors.getTextPrimary(context),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          message,
-                          style: TextStyle(
-                            color: AppColors.getTextSecondary(context),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.getTextMuted(context)
-                        .withValues(alpha: 0.6),
-                    size: 24,
-                  ),
-                ],
-              ),
-            ),
+      child: Center(
+        child: Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: dotColor,
+            shape: BoxShape.circle,
+            boxShadow: [
+              if (isDark)
+                BoxShadow(
+                  color: dotColor.withValues(alpha: 0.3),
+                  blurRadius: 4,
+                  spreadRadius: 1,
+                ),
+            ],
           ),
         ),
       ),
@@ -351,7 +326,7 @@ class GameplayHintPanel extends StatelessWidget {
   }
 }
 
-/// Gameplay control button
+/// Gameplay control button with optional badge count (e.g. Hint 3)
 class GameplayControlButton extends StatelessWidget {
   const GameplayControlButton({
     required this.icon,

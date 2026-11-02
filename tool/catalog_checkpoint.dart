@@ -52,8 +52,8 @@ class CatalogCheckpoint {
   }
 
   static CatalogCheckpoint read(File file) => CatalogCheckpoint.fromJson(
-        jsonDecode(file.readAsStringSync()) as Map<String, dynamic>,
-      );
+    jsonDecode(file.readAsStringSync()) as Map<String, dynamic>,
+  );
 
   Map<String, Object?> toJson() => {
     'schemaVersion': schemaVersion,

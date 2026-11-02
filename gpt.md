@@ -354,7 +354,6 @@ soundEnabled
 musicEnabled
 musicVolume
 hapticsEnabled
-hintsEnabled
 confirmRestart
 themeMode
 ```

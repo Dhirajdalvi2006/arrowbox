@@ -128,7 +128,7 @@ class _StartupSplashState extends State<_StartupSplash> {
     return FadeTransition(
       opacity: _entrance,
       child: Scaffold(
-        backgroundColor: const Color(0xFF070D1A),
+        backgroundColor: const Color(0xFF000000),
         body: Stack(
           children: [
             // Background Grid
@@ -155,7 +155,7 @@ class _StartupSplashState extends State<_StartupSplash> {
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0A1628),
+                      color: const Color(0xFF080808),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
                         color: AppColors.primaryBright.withValues(alpha: 0.5),
@@ -197,7 +197,7 @@ class _StartupSplashState extends State<_StartupSplash> {
                     width: 200,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0A1628),
+                      color: const Color(0xFF080808),
                       borderRadius: BorderRadius.circular(2),
                     ),
                     child: const LinearProgressIndicator(
@@ -247,7 +247,7 @@ class _StartupFailure extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF070D1A),
+      backgroundColor: AppColors.darkBackground,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),

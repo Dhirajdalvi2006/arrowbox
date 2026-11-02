@@ -60,8 +60,8 @@ flutter_icons:
   web:
     generate: true
     image_path: "assets/icon_source.png"
-    background_color: "#070D1A"
-    theme_color: "#070D1A"
+    background_color: "#000000"
+    theme_color: "#000000"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -77,6 +77,7 @@ flutter:
   assets:
     - assets/images/app_logo.png
     - assets/images/arrowbox_cube_logo.png
+    - assets/audio/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

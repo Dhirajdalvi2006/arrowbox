@@ -53,7 +53,9 @@ void main(List<String> args) {
           .toSet(),
     );
     final status = _validateOutcome(outcome, difficulty, level, checkpoint);
-    final metrics = outcome.board == null ? null : LevelSolver.analyze(outcome.board!);
+    final metrics = outcome.board == null
+        ? null
+        : LevelSolver.analyze(outcome.board!);
     checkpoint.results[level] = {
       'level': level,
       'difficulty': difficulty.name,
@@ -65,7 +67,9 @@ void main(List<String> args) {
       'backtracks': stats.backtracks,
       'solverInvocations': stats.solverInvocations,
       'solverSolvable': status == 'SUCCESS' && metrics?.solvable == true,
-      'replayVerified': status == 'SUCCESS' && metrics != null &&
+      'replayVerified':
+          status == 'SUCCESS' &&
+          metrics != null &&
           _replays(outcome.board!, metrics.solution),
       if (metrics != null) ...{
         'initialChoices': metrics.initialChoices,
@@ -162,17 +166,23 @@ bool _enrichLegacySuccess(
   ArrowBoxDifficulty difficulty,
   CatalogCheckpoint checkpoint,
 ) {
-  if (result['status'] != 'SUCCESS' || result['level'] != level ||
-      result['difficulty'] != difficulty.name || result['layout'] is! String) {
+  if (result['status'] != 'SUCCESS' ||
+      result['level'] != level ||
+      result['difficulty'] != difficulty.name ||
+      result['layout'] is! String) {
     return false;
   }
   final board = _parseLayout(result['layout'] as String);
-  if (board == null || checkpoint.results.values.any(
-      (other) => other['level'] != level && other['layout'] == result['layout'])) {
+  if (board == null ||
+      checkpoint.results.values.any(
+        (other) =>
+            other['level'] != level && other['layout'] == result['layout'],
+      )) {
     return false;
   }
   final metrics = LevelSolver.analyze(board);
-  if (metrics == null || !metrics.solvable ||
+  if (metrics == null ||
+      !metrics.solvable ||
       !_matchesProfile(board, metrics, level, difficulty) ||
       !_replays(board, metrics.solution)) {
     return false;
@@ -194,26 +204,37 @@ bool _isReusableSuccess(
   ArrowBoxDifficulty difficulty,
   CatalogCheckpoint checkpoint,
 ) {
-  if (result['status'] != 'SUCCESS' || result['level'] != level ||
-      result['difficulty'] != difficulty.name || result['layout'] is! String ||
-      result['initialChoices'] is! int || result['dependencyDepth'] is! int ||
-      result['forcedMoveRatio'] is! num || result['directionCounts'] is! List ||
-      result['solverSolvable'] != true || result['replayVerified'] != true) {
+  if (result['status'] != 'SUCCESS' ||
+      result['level'] != level ||
+      result['difficulty'] != difficulty.name ||
+      result['layout'] is! String ||
+      result['initialChoices'] is! int ||
+      result['dependencyDepth'] is! int ||
+      result['forcedMoveRatio'] is! num ||
+      result['directionCounts'] is! List ||
+      result['solverSolvable'] != true ||
+      result['replayVerified'] != true) {
     return false;
   }
   final layout = result['layout'] as String;
   final board = _parseLayout(layout);
-  if (board == null || checkpoint.results.values.any(
-      (other) => other['level'] != level && other['layout'] == layout)) {
+  if (board == null ||
+      checkpoint.results.values.any(
+        (other) => other['level'] != level && other['layout'] == layout,
+      )) {
     return false;
   }
   final metrics = LevelSolver.analyze(board);
-  if (metrics == null || !metrics.solvable ||
+  if (metrics == null ||
+      !metrics.solvable ||
       !_matchesProfile(board, metrics, level, difficulty) ||
       metrics.initialChoices != result['initialChoices'] ||
       metrics.dependencyDepth != result['dependencyDepth'] ||
-      (metrics.forcedMoveRatio - (result['forcedMoveRatio'] as num).toDouble()).abs() > 0.000001 ||
-      metrics.directionCounts.join(',') != (result['directionCounts'] as List).join(',')) {
+      (metrics.forcedMoveRatio - (result['forcedMoveRatio'] as num).toDouble())
+              .abs() >
+          0.000001 ||
+      metrics.directionCounts.join(',') !=
+          (result['directionCounts'] as List).join(',')) {
     return false;
   }
   return _replays(board, metrics.solution);
@@ -226,9 +247,8 @@ bool _matchesProfile(
   ArrowBoxDifficulty difficulty,
 ) {
   final occupied = board.whereType<ArrowDirection>().length;
-  final minimumInitialChoices = difficulty == ArrowBoxDifficulty.easy && level <= 10
-      ? 2
-      : 1;
+  final minimumInitialChoices =
+      difficulty == ArrowBoxDifficulty.easy && level <= 10 ? 2 : 1;
   final maximumInitialChoices = switch (difficulty) {
     ArrowBoxDifficulty.easy => level <= 10 ? 12 : 8,
     ArrowBoxDifficulty.medium => 6,
@@ -236,19 +256,34 @@ bool _matchesProfile(
     ArrowBoxDifficulty.ultraHard => 8,
   };
   final minimumDepth = switch (difficulty) {
-    ArrowBoxDifficulty.easy => level <= 3 ? 0 : level <= 10 ? 1 : 2,
+    ArrowBoxDifficulty.easy =>
+      level <= 3
+          ? 0
+          : level <= 10
+          ? 1
+          : 2,
     ArrowBoxDifficulty.medium => level <= 130 ? 2 : 3,
     ArrowBoxDifficulty.hard || ArrowBoxDifficulty.ultraHard => 3,
   };
-  final minimumDirections = difficulty == ArrowBoxDifficulty.easy && level <= 3 ? 1 :
-      difficulty == ArrowBoxDifficulty.easy ? 2 :
-      difficulty == ArrowBoxDifficulty.medium ? 2 : 3;
+  final minimumDirections = difficulty == ArrowBoxDifficulty.easy && level <= 3
+      ? 1
+      : difficulty == ArrowBoxDifficulty.easy
+      ? 2
+      : difficulty == ArrowBoxDifficulty.medium
+      ? 2
+      : 3;
   final minimumForcedRatio = difficulty == ArrowBoxDifficulty.easy ? 0 : 0.05;
   final minimumArrows = switch (difficulty) {
-    ArrowBoxDifficulty.easy => level == 1 ? 8 :
-        level <= 10 ? 8 + ((level - 1) * 4 ~/ 9) :
-        level <= 30 ? 10 + ((level - 11) * 5 ~/ 19) :
-        level <= 60 ? 12 + ((level - 31) * 6 ~/ 29) : 14 + ((level - 61) * 6 ~/ 39),
+    ArrowBoxDifficulty.easy =>
+      level == 1
+          ? 8
+          : level <= 10
+          ? 8 + ((level - 1) * 4 ~/ 9)
+          : level <= 30
+          ? 10 + ((level - 11) * 5 ~/ 19)
+          : level <= 60
+          ? 12 + ((level - 31) * 6 ~/ 29)
+          : 14 + ((level - 61) * 6 ~/ 39),
     ArrowBoxDifficulty.medium => 16 + ((level - 101) * 7 ~/ 99),
     ArrowBoxDifficulty.hard => 20 + ((level - 201) % 6),
     ArrowBoxDifficulty.ultraHard => 25,

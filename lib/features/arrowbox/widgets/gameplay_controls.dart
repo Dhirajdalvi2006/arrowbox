@@ -31,7 +31,7 @@ class GameplayControls extends StatelessWidget {
           Expanded(
             child: GameplayControlButton(
               icon: Icons.refresh_rounded,
-              label: 'Restart Level',
+              label: 'Restart',
               enabled: !isBusy,
               onTap: onRestart,
             ),

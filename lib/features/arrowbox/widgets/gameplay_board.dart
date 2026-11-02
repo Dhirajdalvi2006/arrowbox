@@ -103,34 +103,11 @@ class GameplayBoard extends StatelessWidget {
                         top: (index ~/ 5) * (tileSize + gap),
                         width: tileSize,
                         height: tileSize,
-                        child: game.board[index] == null
-                            ? (exiting[index] == null
-                                  ? EmptyBoardCell(theme: boardTheme)
-                                  : GradientArrowTile(
-                                      direction: exiting[index]!.direction,
-                                      skin: skin,
-                                      index: index,
-                                      highlighted: false,
-                                      isEscaping: true,
-                                      isShaking: false,
-                                      onTap: () {},
-                                      escapeDuration: exiting[index]!.duration,
-                                      escapeDistance: escapeDistance,
-                                    ))
-                            : GradientArrowTile(
-                                direction: game.board[index]!,
-                                skin: skin,
-                                index: index,
-                                highlighted: index == hintIndex,
-                                isEscaping: false,
-                                isShaking: index == shakingIndex,
-                                onTap: () => onTap(index),
-                                escapeDuration: animationDuration,
-                                escapeDistance: escapeDistance,
-                                animationDelay: Duration(
-                                  milliseconds: (index % 5 + index ~/ 5) * 50,
-                                ),
-                              ),
+                        child: _buildCell(
+                          index: index,
+                          tileSize: tileSize,
+                          escapeDistance: escapeDistance,
+                        ),
                       ),
                   ],
                 ),
@@ -139,6 +116,66 @@ class GameplayBoard extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  /// Builds a consistent cell widget for every grid position.
+  ///
+  /// Every cell position ALWAYS renders an [EmptyBoardCell] as its base layer,
+  /// guaranteeing the empty-tile background, border, and rounded corners are
+  /// always visible regardless of arrow state. The arrow (if present or
+  /// escaping) is rendered on top via a [Stack].
+  ///
+  /// - Empty cell (no arrow) → [EmptyBoardCell] only
+  /// - Occupied cell → [EmptyBoardCell] + [GradientArrowTile] on top
+  /// - Escaping cell → [EmptyBoardCell] + escaping [GradientArrowTile] on top;
+  ///   when the arrow fades out, [EmptyBoardCell] remains visible
+  Widget _buildCell({
+    required int index,
+    required double tileSize,
+    required double escapeDistance,
+  }) {
+    final isEmpty = game.board[index] == null;
+    final isExiting = exiting[index] != null;
+
+    return Stack(
+      children: [
+        // Base layer: always render the empty tile background.
+        // SizedBox.expand guarantees EmptyBoardCell fills the entire cell
+        // bounds (tileSize x tileSize) so every grid position always has a
+        // visible tile decoration, even during escape animations when the
+        // arrow tile fades to opacity 0.
+        SizedBox.expand(child: EmptyBoardCell(theme: boardTheme)),
+
+        // Overlay layer: arrow tile (occupied or escaping).
+        if (!isEmpty)
+          GradientArrowTile(
+            direction: game.board[index]!,
+            skin: skin,
+            index: index,
+            highlighted: index == hintIndex,
+            isEscaping: false,
+            isShaking: index == shakingIndex,
+            onTap: () => onTap(index),
+            escapeDuration: animationDuration,
+            escapeDistance: escapeDistance,
+            animationDelay: Duration(
+              milliseconds: (index % 5 + index ~/ 5) * 50,
+            ),
+          )
+        else if (isExiting)
+          GradientArrowTile(
+            direction: exiting[index]!.direction,
+            skin: skin,
+            index: index,
+            highlighted: false,
+            isEscaping: true,
+            isShaking: false,
+            onTap: () {},
+            escapeDuration: exiting[index]!.duration,
+            escapeDistance: escapeDistance,
+          ),
+      ],
     );
   }
 }

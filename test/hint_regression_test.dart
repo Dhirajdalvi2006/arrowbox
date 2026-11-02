@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:locate/core/app_store.dart';
 import 'package:locate/features/arrowbox/arrowbox_logic.dart';
-import 'package:locate/features/arrowbox/arrowbox_screen.dart';
+import 'package:locate/features/arrowbox/screens/arrowbox_screen.dart';
+import 'package:locate/features/arrowbox/arrowbox_board_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -20,9 +21,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Hint'), findsOneWidget);
-      await tester.ensureVisible(find.text('Hint'));
-      await tester.tap(find.text('Hint'));
+      final hintButton = find.widgetWithText(GameplayControlButton, 'Hint');
+      expect(hintButton, findsOneWidget);
+      await tester.ensureVisible(hintButton);
+      await tester.tap(hintButton);
       await tester.pump();
 
       // Verify hint index is tracked and tile builds without error

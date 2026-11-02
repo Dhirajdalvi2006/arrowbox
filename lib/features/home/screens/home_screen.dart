@@ -35,8 +35,8 @@ class HomeScreen extends StatelessWidget {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: (isDark ? AppColors.primary : AppColors.cyan).withValues(
-                  alpha: isDark ? 0.15 : 0.08,
+                color: (isDark ? Colors.white : AppColors.cyan).withValues(
+                  alpha: isDark ? 0.05 : 0.08,
                 ),
               ),
             ),

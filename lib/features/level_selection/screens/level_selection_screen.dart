@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/admin_access_service.dart';
 import '../../../core/app_store.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/arrowbox_widgets.dart';
@@ -235,7 +236,8 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                   final isCurrent =
                       level == store.unlockedLevel && !isCompleted;
                   final isLocked =
-                      !store.isAdmin && level > store.unlockedLevel;
+                      !AdminAccessService.isAdmin &&
+                      level > store.unlockedLevel;
                   final difficulty = LevelCatalog.difficultyFor(level);
 
                   return Semantics(

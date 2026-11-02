@@ -237,7 +237,7 @@ void main() {
     expect(find.text('Level 3'), findsOneWidget);
     expect(find.text('EASY'), findsOneWidget);
     expect(find.text('0 mistakes'), findsOneWidget);
-    expect(find.text('Restart Level'), findsOneWidget);
+    expect(find.text('Restart'), findsOneWidget);
   });
 
   testWidgets('Gameplay screen fits a narrow viewport', (tester) async {
@@ -331,7 +331,8 @@ void main() {
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('GAMEPLAY'), findsOneWidget);
     expect(find.text('Haptic feedback'), findsOneWidget);
-    expect(find.text('Show hints'), findsOneWidget);
+    expect(find.text('Confirm before restart'), findsOneWidget);
+    expect(find.text('Show hints'), findsNothing);
     expect(find.text('AUDIO'), findsOneWidget);
     expect(find.text('APPEARANCE'), findsOneWidget);
     expect(find.text('Dark theme'), findsOneWidget);
@@ -349,7 +350,7 @@ void main() {
     expect(find.text('2 / ${AppStore.totalLevels}'), findsOneWidget);
     expect(find.text('Total Levels'), findsOneWidget);
     expect(find.text('${AppStore.totalLevels}'), findsOneWidget);
-    expect(find.text('Current Level'), findsOneWidget);
+    expect(find.text('Next Level'), findsOneWidget);
     expect(find.text('3'), findsOneWidget);
     expect(find.text('Games Played'), findsOneWidget);
     expect(find.text('5'), findsOneWidget);

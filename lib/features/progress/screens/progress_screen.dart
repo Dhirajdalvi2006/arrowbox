@@ -2,111 +2,179 @@ import 'package:flutter/material.dart';
 
 import '../../../core/app_store.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/arrowbox_widgets.dart';
-import '../widgets/progress_widgets.dart';
+import '../../arrowbox/arrowbox_logic.dart';
+import '../../arrowbox/arrowbox_screen.dart';
+import '../widgets/achievements_section.dart';
+import '../widgets/journey_card.dart';
+import '../widgets/player_stats_grid.dart';
+import '../widgets/recent_activity_section.dart';
 
-class ProgressScreen extends StatelessWidget {
+/// Progress screen — gameplay statistics and level progression.
+///
+/// Sections (in order):
+/// 1. Page header — back button + Progress title
+/// 2. Your Journey card — animated progress ring, continue button
+/// 3. Player Stats — responsive two-column grid
+/// 4. Recent Activity — horizontal list of completed levels
+/// 5. Personal Bests — streak, perfect clears, total completed
+///
+/// Listens to [AppStore] changes so the UI updates when progress is saved.
+class ProgressScreen extends StatefulWidget {
   const ProgressScreen({required this.store, this.embedded = false, super.key});
+
   final AppStore store;
   final bool embedded;
 
   @override
-  Widget build(BuildContext context) {
-    final completedCount = store.completedLevels.length;
-    final progressRatio = (completedCount / AppStore.totalLevels).clamp(
-      0.0,
-      1.0,
-    );
+  State<ProgressScreen> createState() => _ProgressScreenState();
+}
 
+class _ProgressScreenState extends State<ProgressScreen> {
+  @override
+  void initState() {
+    super.initState();
+    widget.store.addListener(_onStoreChanged);
+    // Reconcile any rewards that should be unlocked based on current progress.
+    widget.store.reconcileRewards(widget.store.completedLevels.length);
+  }
+
+  @override
+  void didUpdateWidget(covariant ProgressScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.store != widget.store) {
+      oldWidget.store.removeListener(_onStoreChanged);
+      widget.store.addListener(_onStoreChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.store.removeListener(_onStoreChanged);
+    super.dispose();
+  }
+
+  void _onStoreChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _continuePlaying() {
+    final nextLevel = widget.store.unlockedLevel;
+    final totalLevels = AppStore.totalLevels;
+
+    if (nextLevel > totalLevels) return;
+
+    final savedState = widget.store.savedGames[nextLevel];
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ArrowBoxScreen(
+          store: widget.store,
+          initialState: savedState ?? ArrowBoxState.initial(level: nextLevel),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.getBackground(context),
       body: SafeArea(
         child: Column(
           children: [
-            // Top Bar
+            // Page header
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
               child: Row(
                 children: [
-                  ArrowBoxHeaderIconButton(
-                    icon: Icons.arrow_back_rounded,
-                    tooltip: 'Back',
-                    onPressed: embedded ? () {} : () => Navigator.pop(context),
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.primaryBright.withValues(alpha: 0.6),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primaryBright.withValues(
+                            alpha: 0.25,
+                          ),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      iconSize: 24,
+                      color: AppColors.primaryBright,
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      tooltip: 'Back',
+                      onPressed: widget.embedded
+                          ? () {}
+                          : () => Navigator.pop(context),
+                    ),
                   ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Progress',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppColors.getTextPrimary(context),
+                      style: const TextStyle(
+                        color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 40),
+                  const SizedBox(width: 56), // Visual balance for back button
                 ],
               ),
             ),
 
+            // Scrollable content
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
-                children: [
-                  // Circular Progress Card
-                  CircularProgressCard(
-                    completedCount: completedCount,
-                    totalLevels: AppStore.totalLevels,
-                    progressRatio: progressRatio,
-                  ),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  8,
+                  20,
+                  widget.embedded ? 100 : 24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
 
-                  const SizedBox(height: 20),
+                    // Your Journey card
+                    JourneyCard(
+                      store: widget.store,
+                      onContinue: _continuePlaying,
+                    ),
 
-                  // 2x2 Metric Cards Grid
-                  Row(
-                    children: [
-                      Expanded(
-                        child: MetricCard(
-                          icon: Icons.grid_view_rounded,
-                          iconColor: AppColors.primaryBright,
-                          label: 'Total Levels',
-                          value: '${AppStore.totalLevels}',
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: MetricCard(
-                          icon: Icons.flag_rounded,
-                          iconColor: AppColors.error,
-                          label: 'Current Level',
-                          value: '${store.unlockedLevel}',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: MetricCard(
-                          icon: Icons.sports_esports_rounded,
-                          iconColor: AppColors.cyan,
-                          label: 'Games Played',
-                          value: '${store.gamesPlayed}',
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: MetricCard(
-                          icon: Icons.warning_amber_rounded,
-                          iconColor: AppColors.warning,
-                          label: 'Total Mistakes',
-                          value: '${store.totalMistakes}',
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                    const SizedBox(height: 24),
+
+                    // Player Stats
+                    PlayerStatsGrid(store: widget.store),
+
+                    const SizedBox(height: 24),
+
+                    // Recent Activity
+                    RecentActivitySection(store: widget.store),
+
+                    const SizedBox(height: 24),
+
+                    // Personal Bests
+                    AchievementsSection(store: widget.store),
+
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
           ],

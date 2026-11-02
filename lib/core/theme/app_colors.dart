@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Reference Dark Palette (Default)
-  static const darkBackground = Color(0xFF070D1A);
-  static const darkSecondaryBackground = Color(0xFF0A1426);
+  static const darkBackground = Color(0xFF000000);
+  static const darkSecondaryBackground = Color(0xFF080808);
   static const darkCard = Color(0xFF101C31);
   static const darkSurfaceElevated = Color(0xFF14223B);
   static const darkTextPrimary = Color(0xFFFFFFFF);

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../../app.dart';
 import '../../../core/app_store.dart';
+import '../../../core/services/audio_manager.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../arrow_designs/arrow_designs.dart';
 import '../arrowbox_dialogs.dart';
@@ -55,6 +56,15 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
       _timerStarted = true;
       _startTimer();
     }
+    // Sync audio preferences (sound effects + background music) from the store.
+    AudioManager.instance.initializeFromStore(
+      soundEnabled: widget.store.soundEnabled,
+      musicEnabled: widget.store.musicEnabled,
+      musicVolume: widget.store.musicVolume,
+    );
+    if (widget.store.musicEnabled) {
+      unawaited(AudioManager.instance.startMusic());
+    }
   }
 
   @override
@@ -92,8 +102,13 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
     _session++;
     _inputQueue.clear();
     _exiting.clear();
+    for (final timer in _exitTimers.values) {
+      timer.cancel();
+    }
+    _exitTimers.clear();
     _timer?.cancel();
     _saveCurrentGame();
+    unawaited(AudioManager.instance.stopMusic());
     super.dispose();
   }
 
@@ -103,6 +118,12 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
     _inputQueue.invalidateSession(oldSession);
     _inputQueue.clear();
     _exiting.clear();
+    // Cancel any pending exit timers from the old session
+    for (final timer in _exitTimers.values) {
+      timer.cancel();
+    }
+    _exitTimers.clear();
+    _shakingIndex = null;
   }
 
   Future<void> _leaveScreen() async {
@@ -156,6 +177,12 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
       _shakingIndex = null;
       _paused = false;
     });
+    // A restarted game always needs a fresh countdown timer: the previous one
+    // may have been cancelled when the session ended (Game Over / Level
+    // Complete), in which case restarting without re-arming would freeze it.
+    _timerStarted = true;
+    _startTimer();
+    unawaited(AudioManager.instance.play(SoundEffect.restart));
     await widget.store.saveGame(_game);
   }
 
@@ -206,6 +233,8 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
     }
   }
 
+  final Map<int, Timer> _exitTimers = {};
+
   Future<void> _executeQueuedMove(ArrowBoxInputRequest request) async {
     debugPrint('_executeQueuedMove started for ${request.index}');
     if (!mounted || request.session != _session) return;
@@ -235,6 +264,13 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
     final result = _game.move(request.index);
     if (!mounted || request.session != _session) return;
 
+    // Play game sound effects: arrow escape on success, blocked/mistake otherwise.
+    unawaited(
+      AudioManager.instance.play(
+        canEscape && result.wasValid ? SoundEffect.escape : SoundEffect.blocked,
+      ),
+    );
+
     if (canEscape && result.wasValid) {
       final duration = _animationTiming.durationFor(_inputClock.elapsed);
       final exitId = ++_exitId;
@@ -253,9 +289,11 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
         _game = result.state.withSeconds(_seconds);
         _shakingIndex = request.index;
       });
-      await Future<void>.delayed(const Duration(milliseconds: 320));
-      if (!mounted || request.session != _session) return;
-      setState(() => _shakingIndex = null);
+      final timer = Timer(const Duration(milliseconds: 320), () {
+        if (!mounted || request.session != _session) return;
+        setState(() => _shakingIndex = null);
+      });
+      _exitTimers[request.index] = timer;
     }
     await widget.store.saveGame(_game);
     if (!mounted || request.session != _session) return;
@@ -272,16 +310,14 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
     }
   }
 
-  Future<void> _finishExit(
-    int index,
-    int exitId,
-    int session,
-    Duration duration,
-  ) async {
-    await Future<void>.delayed(duration);
-    if (!mounted || session != _session) return;
-    if (_exiting[index]?.id != exitId) return;
-    setState(() => _exiting.remove(index));
+  void _finishExit(int index, int exitId, int session, Duration duration) {
+    final timer = Timer(duration, () {
+      if (!mounted || session != _session) return;
+      if (_exiting[index]?.id != exitId) return;
+      setState(() => _exiting.remove(index));
+      _exitTimers.remove(index);
+    });
+    _exitTimers[index] = timer;
   }
 
   int get _completionStars => _game.mistakes == 0 && _game.hintsUsed == 0
@@ -291,15 +327,18 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
       : 1;
 
   Future<void> _showHint() async {
-    if (_busy ||
-        _paused ||
-        _game.isGameOver ||
-        _game.isCleared ||
-        _game.hintsUsed >= 3) {
+    if (_busy || _paused || _game.isGameOver || _game.isCleared) return;
+    if (_game.hintsUsed >= 3) {
+      _showHintFeedback('No hints remaining for this level.');
       return;
     }
     final index = _game.nextEscapeIndex;
-    if (index == null) return;
+    if (index == null) {
+      _showHintFeedback(
+        'No arrow can escape right now. Free a blocking arrow first.',
+      );
+      return;
+    }
     if (widget.store.hapticsEnabled) {
       HapticFeedback.selectionClick();
     }
@@ -307,10 +346,28 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
       _game = _game.useHint();
       _hintIndex = index;
     });
+    unawaited(AudioManager.instance.play(SoundEffect.hint));
     await widget.store.saveGame(_game.withSeconds(_seconds));
   }
 
+  /// Shows a short, non-blocking message when a hint cannot be produced.
+  void _showHintFeedback(String message) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+          backgroundColor: AppColors.getCard(context),
+        ),
+      );
+  }
+
   Future<void> _showLevelComplete() async {
+    unawaited(AudioManager.instance.play(SoundEffect.complete));
     await widget.store.recordCompletion(
       _game.level,
       _game.mistakes,
@@ -381,6 +438,7 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
 
   Future<void> _showGameOver() async {
     if (!mounted) return;
+    unawaited(AudioManager.instance.play(SoundEffect.gameOver));
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -436,7 +494,7 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
                 top: -100,
                 right: -50,
                 child: _BackgroundGlow(
-                  color: const Color(0xFF1D5CC9).withValues(alpha: 0.15),
+                  color: Colors.white.withValues(alpha: 0.05),
                   size: 300,
                 ),
               ),
@@ -444,7 +502,7 @@ class _ArrowBoxScreenState extends State<ArrowBoxScreen>
                 bottom: 100,
                 left: -100,
                 child: _BackgroundGlow(
-                  color: const Color(0xFF14D1FF).withValues(alpha: 0.1),
+                  color: Colors.white.withValues(alpha: 0.05),
                   size: 400,
                 ),
               ),

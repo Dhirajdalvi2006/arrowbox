@@ -303,7 +303,6 @@ A saved game contains the current level, board, lives, mistakes, moves, elapsed 
 - `musicEnabled`
 - `musicVolume`
 - `hapticsEnabled`
-- `hintsEnabled`
 - `confirmRestart`
 - `themeMode`
 

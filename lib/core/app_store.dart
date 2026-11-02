@@ -6,6 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/arrowbox/arrowbox_logic.dart';
 import '../features/arrow_designs/arrow_designs.dart';
+import 'admin_access_service.dart';
+import 'services/audio_manager.dart';
+import 'services/reward_service.dart';
 import 'services/auth_service.dart';
 import 'services/cloud_sync_service.dart';
 
@@ -23,11 +26,16 @@ class AppStore extends ChangeNotifier {
       musicEnabled = _prefs.getBool('musicEnabled') ?? true,
       musicVolume = _prefs.getDouble('musicVolume') ?? 0.7,
       hapticsEnabled = _prefs.getBool('hapticsEnabled') ?? true,
-      hintsEnabled = _prefs.getBool('hintsEnabled') ?? true,
       confirmRestart = _prefs.getBool('confirmRestart') ?? true,
       themeMode = _validThemeMode(_prefs.getInt('themeMode')),
       arrowSkinId = _validSkinId(_prefs.getString('arrowSkinId')),
-      boardThemeId = _validBoardThemeId(_prefs.getString('boardThemeId'));
+      boardThemeId = _validBoardThemeId(_prefs.getString('boardThemeId')),
+      unlockedArrowSkinIds = _validUnlockedArrowSkins(
+        _prefs.getStringList('unlockedArrowSkins'),
+      ),
+      unlockedBoardThemeIds = _validUnlockedBoardThemes(
+        _prefs.getStringList('unlockedBoardThemes'),
+      );
 
   AppStore._(this._prefs)
     : unlockedLevel = _validLevel(_prefs.getInt('unlockedLevel')),
@@ -41,11 +49,16 @@ class AppStore extends ChangeNotifier {
       musicEnabled = _prefs.getBool('musicEnabled') ?? true,
       musicVolume = _prefs.getDouble('musicVolume') ?? 0.7,
       hapticsEnabled = _prefs.getBool('hapticsEnabled') ?? true,
-      hintsEnabled = _prefs.getBool('hintsEnabled') ?? true,
       confirmRestart = _prefs.getBool('confirmRestart') ?? true,
       themeMode = _validThemeMode(_prefs.getInt('themeMode')),
       arrowSkinId = _validSkinId(_prefs.getString('arrowSkinId')),
-      boardThemeId = _validBoardThemeId(_prefs.getString('boardThemeId'));
+      boardThemeId = _validBoardThemeId(_prefs.getString('boardThemeId')),
+      unlockedArrowSkinIds = _validUnlockedArrowSkins(
+        _prefs.getStringList('unlockedArrowSkins'),
+      ),
+      unlockedBoardThemeIds = _validUnlockedBoardThemes(
+        _prefs.getStringList('unlockedBoardThemes'),
+      );
 
   static int get totalLevels => ArrowBoxLevel.count;
 
@@ -100,6 +113,38 @@ class AppStore extends ChangeNotifier {
         orElse: () => BoardThemeId.midnight,
       );
 
+  static Set<ArrowSkinId> _validUnlockedArrowSkins(List<String>? values) {
+    if (values == null) return {ArrowSkinId.classic};
+    final result = <ArrowSkinId>{
+      ArrowSkinId.classic,
+    }; // Classic always unlocked
+    for (final value in values) {
+      try {
+        final id = ArrowSkinId.values.firstWhere((s) => s.name == value);
+        result.add(id);
+      } on StateError {
+        // Ignore invalid skin IDs in saved data
+      }
+    }
+    return result;
+  }
+
+  static Set<BoardThemeId> _validUnlockedBoardThemes(List<String>? values) {
+    if (values == null) return {BoardThemeId.midnight};
+    final result = <BoardThemeId>{
+      BoardThemeId.midnight,
+    }; // Midnight always unlocked
+    for (final value in values) {
+      try {
+        final id = BoardThemeId.values.firstWhere((t) => t.name == value);
+        result.add(id);
+      } on StateError {
+        // Ignore invalid theme IDs in saved data
+      }
+    }
+    return result;
+  }
+
   final SharedPreferences _prefs;
   Future<void> _writeQueue = Future<void>.value();
   StreamSubscription? _authSubscription;
@@ -113,11 +158,12 @@ class AppStore extends ChangeNotifier {
   bool musicEnabled;
   double musicVolume;
   bool hapticsEnabled;
-  bool hintsEnabled;
   bool confirmRestart;
   ThemeMode themeMode;
   ArrowSkinId arrowSkinId;
   BoardThemeId boardThemeId;
+  Set<ArrowSkinId> unlockedArrowSkinIds;
+  Set<BoardThemeId> unlockedBoardThemeIds;
   ArrowBoxState? savedGame;
   final Map<int, ArrowBoxState> savedGames = {};
 
@@ -126,10 +172,15 @@ class AppStore extends ChangeNotifier {
 
   bool get hasProgress => completedLevels.isNotEmpty || unlockedLevel > 1;
 
-  bool get isAdmin {
-    final user = AuthService.instance.currentUser;
-    return user?.email?.trim().toLowerCase() == 'dalvi3473@gmail.com';
-  }
+  /// Whether the authenticated user is the designated administrator.
+  ///
+  /// This delegates to [AdminAccessService.isAdmin], which checks the
+  /// Firebase Authenticated user's email against the known admin address.
+  /// The comparison is case-insensitive and trims whitespace.
+  ///
+  /// Updates automatically when the authentication state changes because
+  /// it reads [AuthService.instance.currentUser] directly.
+  bool get isAdmin => AdminAccessService.isAdmin;
 
   static Future<AppStore> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -168,6 +219,10 @@ class AppStore extends ChangeNotifier {
 
     store.savedGame = store._mostAdvancedSavedGame();
     store.initCloudSync();
+
+    // Reconcile unlocked rewards with completed level count on load
+    await store.reconcileRewards(store.completedLevels.length);
+
     return store;
   }
 
@@ -256,7 +311,6 @@ class AppStore extends ChangeNotifier {
       'musicEnabled': musicEnabled,
       'musicVolume': musicVolume,
       'hapticsEnabled': hapticsEnabled,
-      'hintsEnabled': hintsEnabled,
       'confirmRestart': confirmRestart,
       'themeMode': themeMode.index,
       'arrowSkinId': arrowSkinId.name,
@@ -335,11 +389,38 @@ class AppStore extends ChangeNotifier {
       if (cloud['hapticsEnabled'] is bool) {
         hapticsEnabled = cloud['hapticsEnabled'] as bool;
       }
-      if (cloud['hintsEnabled'] is bool) {
-        hintsEnabled = cloud['hintsEnabled'] as bool;
-      }
       if (cloud['confirmRestart'] is bool) {
         confirmRestart = cloud['confirmRestart'] as bool;
+      }
+
+      // Sync unlocked arrow skins
+      final cloudUnlockedSkins = cloud['unlockedArrowSkins'];
+      if (cloudUnlockedSkins is List) {
+        final parsed = <ArrowSkinId>{ArrowSkinId.classic};
+        for (final value in cloudUnlockedSkins) {
+          final str = value.toString();
+          try {
+            parsed.add(ArrowSkinId.values.firstWhere((s) => s.name == str));
+          } on StateError {
+            // Ignore invalid entries
+          }
+        }
+        unlockedArrowSkinIds = parsed;
+      }
+
+      // Sync unlocked board themes
+      final cloudUnlockedThemes = cloud['unlockedBoardThemes'];
+      if (cloudUnlockedThemes is List) {
+        final parsed = <BoardThemeId>{BoardThemeId.midnight};
+        for (final value in cloudUnlockedThemes) {
+          final str = value.toString();
+          try {
+            parsed.add(BoardThemeId.values.firstWhere((t) => t.name == str));
+          } on StateError {
+            // Ignore invalid entries
+          }
+        }
+        unlockedBoardThemeIds = parsed;
       }
 
       // Persist merged state to local storage
@@ -350,6 +431,8 @@ class AppStore extends ChangeNotifier {
 
   Future<void> _persistAll() async {
     await _persistProgress();
+    await _persistUnlockedSkins();
+    await _persistUnlockedThemes();
     await _prefs.setInt('gamesPlayed', gamesPlayed);
     await _prefs.setInt('themeMode', themeMode.index);
     await _prefs.setString('arrowSkinId', arrowSkinId.name);
@@ -358,26 +441,38 @@ class AppStore extends ChangeNotifier {
     await _prefs.setBool('musicEnabled', musicEnabled);
     await _prefs.setDouble('musicVolume', musicVolume);
     await _prefs.setBool('hapticsEnabled', hapticsEnabled);
-    await _prefs.setBool('hintsEnabled', hintsEnabled);
     await _prefs.setBool('confirmRestart', confirmRestart);
   }
 
   Future<void> recordCompletion(int level, int mistakes, {int hintsUsed = 0}) {
     return _enqueueWrite(() async {
-      completedLevels = {...completedLevels, level};
-      final stars = mistakes == 0 && hintsUsed == 0
-          ? 3
-          : mistakes <= 1 && hintsUsed <= 1
-          ? 2
-          : 1;
-      final previousStars = levelStars[level] ?? 0;
-      if (stars > previousStars) levelStars[level] = stars;
-      if (level < totalLevels) {
-        unlockedLevel = (unlockedLevel < level + 1) ? level + 1 : unlockedLevel;
+      // Admin access does not modify normal player progression data.
+      // Admins can play and complete levels, but their completions are not
+      // recorded in the normal player's completedLevels, levelStars, or
+      // unlockedLevel fields, ensuring normal players' progression remains
+      // intact when they sign in after the administrator.
+      if (!isAdmin) {
+        completedLevels = {...completedLevels, level};
+        final stars = mistakes == 0 && hintsUsed == 0
+            ? 3
+            : mistakes <= 1 && hintsUsed <= 1
+            ? 2
+            : 1;
+        final previousStars = levelStars[level] ?? 0;
+        if (stars > previousStars) levelStars[level] = stars;
+        if (level < totalLevels) {
+          unlockedLevel = (unlockedLevel < level + 1)
+              ? level + 1
+              : unlockedLevel;
+        }
+        totalMistakes += mistakes;
+        await _persistProgress();
+
+        // Auto-unlock any newly earned milestone rewards
+        await reconcileRewards(completedLevels.length);
+
+        CloudSyncService.instance.scheduleUpload(this);
       }
-      totalMistakes += mistakes;
-      await _persistProgress();
-      CloudSyncService.instance.scheduleUpload(this);
       notifyListeners();
     });
   }
@@ -418,11 +513,141 @@ class AppStore extends ChangeNotifier {
     });
   }
 
+  /// Unlock an arrow skin if it is not already unlocked.
+  /// Returns true if the skin was newly unlocked.
+  Future<bool> unlockArrowSkin(ArrowSkinId skinId) async {
+    if (unlockedArrowSkinIds.contains(skinId)) return false;
+    unlockedArrowSkinIds = {...unlockedArrowSkinIds, skinId};
+    await _persistUnlockedSkins();
+    CloudSyncService.instance.scheduleUpload(this);
+    notifyListeners();
+    return true;
+  }
+
+  /// Unlock a board theme if it is not already unlocked.
+  /// Returns true if the theme was newly unlocked.
+  Future<bool> unlockBoardTheme(BoardThemeId themeId) async {
+    if (unlockedBoardThemeIds.contains(themeId)) return false;
+    unlockedBoardThemeIds = {...unlockedBoardThemeIds, themeId};
+    await _persistUnlockedThemes();
+    CloudSyncService.instance.scheduleUpload(this);
+    notifyListeners();
+    return true;
+  }
+
+  /// Check whether an arrow skin is unlocked for the current user.
+  ///
+  /// Admins can equip any registered skin immediately.
+  /// Normal players must earn skins through normal milestone unlocking.
+  bool isArrowSkinUnlocked(ArrowSkinId skinId) =>
+      AdminAccessService.canEquipSkin(
+        skinId,
+        completedLevelCount: completedLevels.length,
+      );
+
+  /// Check whether a board theme is unlocked for the current user.
+  ///
+  /// Admins can equip any registered theme immediately.
+  /// Normal players must earn themes through normal milestone unlocking.
+  bool isBoardThemeUnlocked(BoardThemeId themeId) =>
+      AdminAccessService.canEquipTheme(
+        themeId,
+        completedLevelCount: completedLevels.length,
+      );
+
+  /// Whether the current user can access the given level.
+  ///
+  /// Admins can access any level from 1 to 500.
+  /// Normal players can only access levels they've earned through normal progression.
+  bool canAccessLevel(int level) {
+    return AdminAccessService.canSelectLevel(level);
+  }
+
+  /// Whether the current user can equip the given arrow skin.
+  ///
+  /// Admins can equip any registered skin immediately.
+  /// Normal players must earn skins through normal milestone unlocking.
+  bool canEquipArrowSkin(ArrowSkinId skinId) {
+    return AdminAccessService.canEquipSkin(
+      skinId,
+      completedLevelCount: completedLevels.length,
+    );
+  }
+
+  /// Whether the current user can equip the given board theme.
+  ///
+  /// Admins can equip any registered theme immediately.
+  /// Normal players must earn themes through normal milestone unlocking.
+  bool canEquipBoardTheme(BoardThemeId themeId) {
+    return AdminAccessService.canEquipTheme(
+      themeId,
+      completedLevelCount: completedLevels.length,
+    );
+  }
+
+  /// Reconcile unlocked skins and themes with the current completed level count.
+  /// Called after level completion to auto-unlock any newly earned rewards.
+  /// Returns the list of newly unlocked reward IDs.
+  ///
+  /// Admins already have access to all skins and themes, so this method is
+  /// a no-op for administrator accounts and does not modify normal player
+  /// progression data.
+  Future<List<String>> reconcileRewards(int completedLevels) async {
+    if (isAdmin) return <String>[];
+
+    final newlyUnlocked = <String>[];
+
+    // Check arrow skin milestones
+    final skinsEarned = RewardService.calculateArrowSkinsEarned(
+      completedLevels,
+    );
+    for (var i = 0; i < skinsEarned; i++) {
+      final reward = RewardService.arrowSkinMilestones[i];
+      final targetId = reward.rewardReference as ArrowSkinId;
+      final wasUnlocked = await unlockArrowSkin(targetId);
+      if (wasUnlocked) {
+        newlyUnlocked.add(reward.id);
+      }
+    }
+
+    // Check board theme milestones
+    final themesEarned = RewardService.calculateBoardThemesEarned(
+      completedLevels,
+    );
+    for (var i = 0; i < themesEarned; i++) {
+      final reward = RewardService.boardThemeMilestones[i];
+      final targetId = reward.rewardReference as BoardThemeId;
+      final wasUnlocked = await unlockBoardTheme(targetId);
+      if (wasUnlocked) {
+        newlyUnlocked.add(reward.id);
+      }
+    }
+
+    return newlyUnlocked;
+  }
+
+  Future<void> _persistUnlockedSkins() async {
+    await _prefs.setStringList(
+      'unlockedArrowSkins',
+      unlockedArrowSkinIds.map((id) => id.name).toList(),
+    );
+  }
+
+  Future<void> _persistUnlockedThemes() async {
+    await _prefs.setStringList(
+      'unlockedBoardThemes',
+      unlockedBoardThemeIds.map((id) => id.name).toList(),
+    );
+  }
+
   Future<void> setDouble(String key, double value) {
     return _enqueueWrite(() async {
       await _prefs.setDouble(key, value);
       if (key == 'musicVolume') {
         musicVolume = value;
+        // Keep playback in sync for every path that changes the saved value
+        // (settings slider, reset, cloud restore), not just the settings UI.
+        unawaited(AudioManager.instance.setMusicVolume(value));
       }
       CloudSyncService.instance.scheduleUpload(this);
       notifyListeners();
@@ -435,14 +660,16 @@ class AppStore extends ChangeNotifier {
       switch (key) {
         case 'soundEnabled':
           soundEnabled = value;
+          break;
         case 'musicEnabled':
           musicEnabled = value;
+          break;
         case 'hapticsEnabled':
           hapticsEnabled = value;
-        case 'hintsEnabled':
-          hintsEnabled = value;
+          break;
         case 'confirmRestart':
           confirmRestart = value;
+          break;
       }
       CloudSyncService.instance.scheduleUpload(this);
       notifyListeners();
@@ -458,6 +685,8 @@ class AppStore extends ChangeNotifier {
       levelStars = {};
       savedGame = null;
       savedGames.clear();
+      unlockedArrowSkinIds = {ArrowSkinId.classic};
+      unlockedBoardThemeIds = {BoardThemeId.midnight};
       await _prefs.remove('unlockedLevel');
       await _prefs.remove('completedLevels');
       await _prefs.remove('gamesPlayed');
@@ -465,6 +694,8 @@ class AppStore extends ChangeNotifier {
       await _prefs.remove('levelStars');
       await _prefs.remove('savedGame');
       await _prefs.remove('savedGames');
+      await _prefs.remove('unlockedArrowSkins');
+      await _prefs.remove('unlockedBoardThemes');
       CloudSyncService.instance.scheduleUpload(this);
       notifyListeners();
     });
@@ -476,7 +707,6 @@ class AppStore extends ChangeNotifier {
       musicEnabled = true;
       musicVolume = 0.7;
       hapticsEnabled = true;
-      hintsEnabled = true;
       confirmRestart = true;
       themeMode = ThemeMode.dark;
       arrowSkinId = ArrowSkinId.classic;
@@ -486,7 +716,6 @@ class AppStore extends ChangeNotifier {
         'musicEnabled',
         'musicVolume',
         'hapticsEnabled',
-        'hintsEnabled',
         'confirmRestart',
         'arrowSkinId',
         'boardThemeId',

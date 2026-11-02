@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../services/audio_manager.dart';
 import '../theme/app_colors.dart';
 
 class ArrowBoxPressScale extends StatefulWidget {
@@ -130,19 +133,16 @@ class ArrowBoxLogoMark extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(size * 0.22),
         child: Image.asset(
-          'assets/images/app_logo.png',
+          'assets/images/arrowbox_cube_logo.png',
           width: size,
           height: size,
           fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) => Image.asset(
-            'assets/images/arrowbox_cube_logo.png',
-            width: size,
-            height: size,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) => ColoredBox(
+          errorBuilder: (context, error, stackTrace) => Tooltip(
+            message: 'ArrowBox logo asset failed to load',
+            child: ColoredBox(
               color: const Color(0xFF070D1A),
               child: Icon(
-                Icons.games_rounded,
+                Icons.broken_image_outlined,
                 color: AppColors.cyan,
                 size: size * 0.5,
               ),
@@ -236,7 +236,12 @@ class ArrowBoxPrimaryButton extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(27),
-            onTap: onPressed,
+            onTap: onPressed == null
+                ? null
+                : () {
+                    unawaited(AudioManager.instance.play(SoundEffect.tap));
+                    onPressed?.call();
+                  },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -322,7 +327,12 @@ class ArrowBoxSecondaryButton extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(26),
-            onTap: onPressed,
+            onTap: onPressed == null
+                ? null
+                : () {
+                    unawaited(AudioManager.instance.play(SoundEffect.tap));
+                    onPressed?.call();
+                  },
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

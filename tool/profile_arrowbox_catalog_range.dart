@@ -55,7 +55,9 @@ void main(List<String> args) {
       break;
     }
   }
-  stdout.writeln('requested=$start..$end elapsedMs=${total.elapsedMilliseconds}');
+  stdout.writeln(
+    'requested=$start..$end elapsedMs=${total.elapsedMilliseconds}',
+  );
 }
 
 List<ArrowDirection?> _generate(
@@ -66,31 +68,31 @@ List<ArrowDirection?> _generate(
   final difficulty = level <= 100
       ? ArrowBoxDifficulty.easy
       : level <= 200
-          ? ArrowBoxDifficulty.medium
-          : level <= 350
-              ? ArrowBoxDifficulty.hard
-              : ArrowBoxDifficulty.ultraHard;
+      ? ArrowBoxDifficulty.medium
+      : level <= 350
+      ? ArrowBoxDifficulty.hard
+      : ArrowBoxDifficulty.ultraHard;
   return switch (difficulty) {
     ArrowBoxDifficulty.easy => EasyLevels.generate(
-        level,
-        excludedLayouts: layouts,
-        stats: stats,
-      ),
+      level,
+      excludedLayouts: layouts,
+      stats: stats,
+    ),
     ArrowBoxDifficulty.medium => MediumLevels.generate(
-        level,
-        excludedLayouts: layouts,
-        stats: stats,
-      ),
+      level,
+      excludedLayouts: layouts,
+      stats: stats,
+    ),
     ArrowBoxDifficulty.hard => HardLevels.generate(
-        level,
-        excludedLayouts: layouts,
-        stats: stats,
-      ),
+      level,
+      excludedLayouts: layouts,
+      stats: stats,
+    ),
     ArrowBoxDifficulty.ultraHard => UltraHardLevels.generate(
-        level,
-        excludedLayouts: layouts,
-        stats: stats,
-      ),
+      level,
+      excludedLayouts: layouts,
+      stats: stats,
+    ),
   };
 }
 

@@ -24,4 +24,13 @@ class BoardTheme {
   final Color frameBorder;
 }
 
-enum BoardThemeId { midnight, deepOcean, aurora, graphite }
+enum BoardThemeId {
+  midnight,
+  deepOcean,
+  aurora,
+  graphite,
+  midnightNebula,
+  deepOceanAbyss,
+  solarFlare,
+  neonVoid,
+}
